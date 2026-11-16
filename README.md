@@ -1,294 +1,144 @@
-# Bilingual Vocab AI
+﻿# LTM – Ứng dụng học từ vựng tiếng Anh
 
-Hệ thống học và khảo thí tiếng Anh chuyên ngành DAU, hỗ trợ học từ vựng
-song ngữ Anh - Trung (có thêm trường dữ liệu tiếng Nhật), trích xuất từ
-vựng từ video YouTube và phân quyền theo ba vai trò: **Sinh viên**,
-**Chuyên gia** và **Quản trị viên**.
+Project gồm hai thành phần C#:
 
-## 1. Kiến trúc tổng quan
+- **BilingualVocabApi**: REST API dùng ASP.NET Core, lưu dữ liệu mặc định trong `BilingualVocabApi/vocab_database.json`.
+- **EnglishFlashcard3D**: ứng dụng desktop WPF để học từ vựng bằng flashcard; gọi API tại `http://localhost:5046`.
 
-Ứng dụng gồm ba phần chạy cùng nhau:
+## Chức năng tài khoản
 
-| Thành phần | Công nghệ | Vai trò | Cổng mặc định |
-| --- | --- | --- | --- |
-| Frontend client | React 19, Vite, TypeScript, Tailwind CSS | Giao diện học tập, notebook, bài thi, chuyên gia và admin | `5173` |
-| Backend API | Node.js, Express, TypeScript/TSX | Xử lý nghiệp vụ, gọi Gemini, trích xuất transcript YouTube và cung cấp REST API | `5000` |
-| Desktop shell | Electron hoặc Edge/Chrome App Mode | Mở frontend trong một cửa sổ desktop riêng | Không có cổng riêng |
+Ứng dụng hỗ trợ đăng nhập và đăng ký tài khoản sinh viên. API cung cấp các endpoint:
 
-Luồng kết nối chính:
+- `POST /api/auth/login`: đăng nhập bằng email và mật khẩu.
+- `POST /api/auth/register`: đăng ký bằng họ tên, email và mật khẩu; tài khoản mới có vai trò `student`.
 
-```text
-Người dùng
-   ↓
-React/Vite (http://localhost:5173)
-   ↓ fetch /api/*
-Express API (http://localhost:5000)
-   ├─ Gemini API: sinh, dịch và bổ sung dữ liệu từ vựng
-   ├─ YouTube transcript: lấy phụ đề và metadata video
-   └─ MySQL (ưu tiên) hoặc vocab_database.json (fallback local)
+Trong ứng dụng desktop, chọn **Đăng nhập** hoặc chuyển sang chế độ tạo tài khoản mới ở màn hình tài khoản. API phải đang chạy trước khi sử dụng các chức năng này.
+
+## Yêu cầu
+
+- Windows 10/11.
+- Git.
+- .NET SDK 10 để chạy API.
+- .NET SDK 8 để chạy ứng dụng WPF.
+
+## Clone project
+
+Mở PowerShell hoặc Terminal:
+
+```powershell
+git clone https://github.com/ngocykng/doanLTM.git
+cd doanLTM
 ```
 
-Frontend lấy URL API từ `VITE_API_URL`. Nếu biến này không được đặt,
-frontend gọi API cùng origin; khi chạy Vite riêng, backend nên được truy cập
-qua proxy/cấu hình môi trường tương ứng.
+## Chạy project
 
-## 2. Chuẩn bị môi trường
+### 1. Chạy API
 
-- Windows 10/11 (script `start-desktop.bat` dùng lệnh Windows).
-- Node.js và npm.
-- MySQL nếu muốn dùng dữ liệu bền vững qua database. Mặc định hệ thống
-  dùng `localhost:3307`, database `bilingual_vocab_dau`.
-- Gemini API key để dùng các chức năng AI: sinh từ vựng, dịch/tra cứu,
-  tự động điền thẻ và phân tích từ vựng video.
+Mở terminal thứ nhất tại thư mục gốc project:
 
-Cài dependency:
-
-```bash
-npm install
+```powershell
+dotnet run --project BilingualVocabApi/BilingualVocabApi.csproj
 ```
 
-Tạo `.env` từ `.env.example`, sau đó cập nhật các giá trị phù hợp với máy
-local. Không commit API key hoặc mật khẩu database vào Git:
+API mặc định chạy tại `http://localhost:5046`. Mở `http://localhost:5046/api/health` để xem trạng thái.
 
-```env
-PORT=5000
-GEMINI_API_KEY=your-gemini-api-key
-DB_HOST=localhost
-DB_PORT=3307
-DB_USER=root
-DB_PASSWORD=your-mysql-password
-DB_NAME=bilingual_vocab_dau
-# VITE_API_URL=http://localhost:5000
+### 2. Chạy ứng dụng desktop
+
+Giữ API đang chạy. Mở terminal thứ hai tại thư mục gốc:
+
+```powershell
+dotnet run --project EnglishFlashcard3D/EnglishFlashcard3D.csproj
 ```
 
-Nếu MySQL không kết nối được, server vẫn khởi động và dùng
-`vocab_database.json` làm bộ nhớ cục bộ. Dữ liệu ở chế độ fallback được ghi
-tại thư mục gốc dự án; khi MySQL sẵn sàng, có thể dùng chức năng đồng bộ
-trong Admin.
+Ứng dụng WPF hiện chỉ chạy trên Windows.
 
-## 3. Cách chạy hệ thống
+Có thể mở solution `LTM.slnx` bằng Visual Studio 2022 có hỗ trợ .NET để chạy hoặc debug từng project.
 
-### Cách 1: Mở desktop một lệnh (khuyến nghị trên Windows)
+### Tính năng AI (tùy chọn)
 
-Chạy một trong hai lệnh sau:
+Một số chức năng tạo từ vựng cần Gemini API key. Đặt key trong biến môi trường `GEMINI_API_KEY` trên máy cá nhân trước khi chạy API. Không ghi API key, mật khẩu hoặc thông tin riêng tư vào source code hay commit lên GitHub.
 
-```bash
-npm run app
-# hoặc
-npm run desktop
+## Làm việc nhóm bằng branch
+
+Mỗi thành viên làm trên branch riêng. Không push trực tiếp lên `main`. Ví dụ tạo branch cho module đăng nhập:
+
+```powershell
+git switch main
+git pull origin main
+git switch -c feature/login
 ```
 
-Script `scripts/launch-desktop.mjs` sẽ:
+Thay `feature/login` bằng tên phù hợp, chẳng hạn `feature/flashcards` hoặc `feature/api-vocab`.
 
-1. Kiểm tra `http://localhost:5000/api/health`; nếu chưa có backend thì tự
-   khởi động `server.ts`.
-2. Kiểm tra `http://localhost:5173`; nếu chưa có frontend thì tự khởi động
-   Vite.
-3. Chờ frontend sẵn sàng rồi mở Electron. Nếu Electron chưa được cài, script
-   thử Edge App Mode, Chrome App Mode, sau đó mở trình duyệt thông thường.
+Sau khi sửa code, commit và push branch lần đầu:
 
-### Cách 2: Chạy tự động bằng file Windows
-
-Nhấp đúp `start-desktop.bat`, hoặc chạy:
-
-```bat
-npm run start:all
+```powershell
+git add .
+git commit -m "Add login module"
+git push -u origin feature/login
 ```
 
-File này khởi động backend, frontend, chờ 3 giây rồi gọi launcher desktop.
+Ở những lần sau trên cùng branch:
 
-### Cách 3: Chạy từng tiến trình để debug
-
-Mở ba terminal tại thư mục dự án:
-
-```bash
-# Terminal 1 - backend
-npm run server
-
-# Terminal 2 - frontend
-npm run client
-
-# Terminal 3 - cửa sổ desktop
-npm run app
+```powershell
+git add .
+git commit -m "Update login module"
+git push
 ```
 
-Hoặc chỉ chạy frontend trên trình duyệt:
+`git add .` thêm các thay đổi trong thư mục hiện tại. Trước khi commit, có thể xem các file sẽ được ghi nhận bằng `git status`.
 
-```bash
-npm run dev
+## Cập nhật code khi thành viên khác đã push
+
+### Trước khi bắt đầu một công việc mới
+
+Cập nhật `main`, rồi tạo branch mới từ phiên bản mới nhất:
+
+```powershell
+git switch main
+git pull origin main
+git switch -c feature/ten-module
 ```
 
-Kiểm tra backend:
+### Khi đang làm trên branch riêng
 
-```text
-http://localhost:5000/
-http://localhost:5000/api/health
+Commit công việc hiện tại trước, sau đó lấy thay đổi mới nhất từ `main` về branch của mình:
+
+```powershell
+git add .
+git commit -m "Save current work"
+git fetch origin
+git rebase origin/main
 ```
 
-## 4. Các module và luồng hoạt động
+Nếu Git báo conflict, mở các file được báo, sửa những đoạn có dấu `<<<<<<<`, `=======`, `>>>>>>>`, lưu lại, rồi chạy:
 
-### 4.1. Khởi tạo ứng dụng và xác thực
-
-1. `src/main.tsx` mount React vào phần tử `#root`.
-2. `src/App.tsx` bọc giao diện trong `AuthProvider`.
-3. `AuthContext` đọc user từ `localStorage`. Nếu chưa có user, hệ thống
-   đăng nhập mặc định tài khoản sinh viên qua `POST /api/auth/login`.
-4. Sau khi đăng nhập, token và thông tin user được lưu ở local storage; việc
-   chuyển vai trò trên giao diện thực hiện đăng nhập lại bằng tài khoản demo
-   tương ứng.
-5. Tab đang mở được lưu ở `vocab_active_tab`, nên lần mở sau có thể tiếp tục
-   tại khu vực trước đó.
-
-### 4.2. Học từ vựng theo chủ đề
-
-```text
-Chọn/tạo chủ đề
-   ↓
-POST /api/vocab/generate
-   ↓
-Backend gọi Gemini với CEFR và danh sách từ cần loại trừ
-   ↓
-Lưu topic + cards vào MySQL hoặc JSON
-   ↓
-FlashcardDeck / QuizMode hiển thị và cập nhật trạng thái learned
+```powershell
+git add .
+git rebase --continue
+git push
 ```
 
-Các thao tác chính gồm lấy danh sách chủ đề, lấy thẻ theo topic, sinh thêm
-thẻ, tạo/sửa/xóa thẻ và đánh dấu đã học. Dữ liệu notebook tổng hợp qua
-`GET /api/vocab/notebook/all`.
+Nếu muốn hủy rebase để quay lại trạng thái trước đó:
 
-### 4.3. Trích xuất từ vựng từ video YouTube
-
-1. Người học dán URL YouTube tại `VideoVocabPage`.
-2. Backend kiểm tra video ID, lấy transcript/metadata và tạo một
-   `video_session`.
-3. Gemini phân tích transcript để tạo các `video_words` kèm nghĩa, ngôn ngữ,
-   cấp độ và timestamp.
-4. Frontend tải session, phát video và đồng bộ từ/phụ đề theo thời gian.
-5. Phụ đề có thể được hiệu chỉnh rồi lưu lại bằng
-   `PUT /api/video/sessions/:sessionId/subtitles`.
-
-Endpoint chính: `POST /api/video/extract`, `GET /api/video/sessions` và
-`GET /api/video/:sessionId`.
-
-### 4.4. Tra cứu và tự động điền thẻ
-
-- `POST /api/translate/lookup`: tra cứu nhanh một từ/cụm từ theo ngôn ngữ
-  nguồn.
-- `POST /api/vocab/autofill`: Gemini bổ sung cách đọc, nghĩa, ví dụ và các
-  trường còn thiếu cho thẻ.
-- Người học xác nhận nội dung rồi lưu bằng
-  `POST /api/vocab/cards`; thẻ có thể chỉnh sửa hoặc xóa sau đó.
-
-### 4.5. Bài thi và cổng Chuyên gia
-
-```text
-Chuyên gia tạo assignment
-   ↓
-Sinh viên xem assignment và nộp Writing/Speaking/Listening
-   ↓
-Chuyên gia xem submissions
-   ↓
-Chấm điểm + feedback + CEFR
-   ↓
-Sinh viên xem kết quả và consultation/study plan
+```powershell
+git rebase --abort
 ```
 
-Nhóm API tương ứng:
+## Gộp code vào main
 
-- Chuyên gia: `/api/expert/assignments`, `/api/expert/submissions`,
-  `/api/expert/consultations`, `/api/expert/students-progress`.
-- Sinh viên: `/api/student/assignments`, `/api/student/assignments/:id/submit`,
-  `/api/student/submissions`, `/api/student/consultations`.
+Sau khi push branch, thành viên mở repository trên GitHub và tạo **Pull Request**:
 
-### 4.6. Trang Quản trị
+1. Chọn branch của mình làm nhánh nguồn (**compare**) và `main` làm nhánh đích (**base**).
+2. Mô tả ngắn phần đã làm và kiểm tra danh sách file thay đổi.
+3. Trưởng nhóm hoặc thành viên được giao review Pull Request.
+4. Khi thống nhất, chọn **Merge pull request** để gộp vào `main`.
 
-Admin theo dõi thống kê, người dùng, chương trình DAU, cấu hình Gemini và
-API logs. Các endpoint chính:
+Sau khi merge, mọi người cập nhật bản chính trên máy bằng:
 
-- `/api/admin/stats`
-- `/api/admin/ai-config`
-- `/api/admin/api-logs`
-- `/api/admin/dau-curriculum`
-- `POST /api/admin/sync-mysql`
-- `/api/auth/users`
-
-Khi server khởi động, `server/db/store.ts` thử kết nối MySQL và tự tạo các
-bảng cần thiết nếu database đã truy cập được. Nếu thất bại, server chuyển
-sang JSON local và ghi cảnh báo trong terminal.
-
-## 5. Tài khoản demo
-
-Các tài khoản được khởi tạo trong database local:
-
-| Vai trò | Email | Mật khẩu |
-| --- | --- | --- |
-| Sinh viên | `student@dau.edu.vn` | `1234` |
-| Chuyên gia | `expert@dau.edu.vn` | `1234` |
-| Quản trị viên | `admin@dau.edu.vn` | `1234` |
-
-Đây là tài khoản phục vụ demo local. Khi triển khai thật, cần thay đổi mật
-khẩu và bổ sung cơ chế xác thực/phân quyền phù hợp.
-
-## 6. Build và chạy bản production
-
-Kiểm tra TypeScript:
-
-```bash
-npm run lint
+```powershell
+git switch main
+git pull origin main
 ```
 
-Build frontend và bundle backend:
-
-```bash
-npm run build
-```
-
-Chạy backend đã build:
-
-```bash
-npm run start
-```
-
-Để backend phục vụ thêm frontend đã build, đặt:
-
-```env
-SERVE_STATIC=true
-```
-
-Sau đó truy cập `http://localhost:5000`. `npm run preview` chỉ phục vụ kiểm
-tra bản build frontend qua Vite preview; nó không thay thế backend API.
-
-## 7. Xử lý lỗi thường gặp
-
-| Hiện tượng | Kiểm tra |
-| --- | --- |
-| Không mở được ứng dụng desktop | Kiểm tra `npm install`, Electron/Edge/Chrome và chạy `npm run client` thủ công |
-| API không phản hồi | Mở `http://localhost:5000/api/health`, xem log terminal backend và kiểm tra cổng `PORT` |
-| Không sinh/tra cứu được từ | Kiểm tra `GEMINI_API_KEY` và quota Gemini |
-| Không có dữ liệu MySQL | Kiểm tra MySQL đang chạy, `DB_HOST`, `DB_PORT`, user/password và database |
-| Dữ liệu vẫn chạy nhưng không vào MySQL | Đây là chế độ fallback JSON; sửa kết nối rồi dùng `POST /api/admin/sync-mysql` |
-| Video không có transcript | Kiểm tra URL YouTube, quyền truy cập phụ đề và thử nhập transcript thủ công nếu giao diện hỗ trợ |
-
-## 8. Cấu trúc thư mục chính
-
-```text
-.
-├─ src/
-│  ├─ components/       # Thành phần giao diện dùng lại
-│  ├─ context/          # AuthContext và trạng thái dùng chung
-│  ├─ pages/            # Các màn hình theo module
-│  ├─ services/api.ts   # Client gọi REST API
-│  └─ types/            # Kiểu dữ liệu dùng chung
-├─ server/
-│  ├─ modules/          # auth, vocab, video, translation, student, expert, admin
-│  ├─ config/           # Gemini client
-│  └─ db/               # MySQL và fallback JSON
-├─ electron/main.cjs    # Cửa sổ Electron
-├─ scripts/             # Launcher desktop và kiểm tra service
-├─ schema.sql           # Schema MySQL tham khảo
-└─ server.ts            # Entry point Express API
-```
-#   L T M  
- #   L T M  
- 
+Nếu chưa có quyền push, nhờ chủ repository thêm tài khoản GitHub của bạn vào **Settings → Collaborators**.
