@@ -154,6 +154,16 @@ public class JsonDatabase
     }
     public void AddTopic(Topic topic) { lock (_sync) { _data.Topics.Insert(0, topic); Save(); } }
     public void DeleteTopic(string topicId) { lock (_sync) { _data.Topics = _data.Topics.Where(t => t.Id != topicId).ToList(); _data.Vocab_Cards = _data.Vocab_Cards.Where(c => c.Topic_Id != topicId).ToList(); Save(); } }
+    public void UpdateTopicCardCount(string topicId)
+    {
+        lock (_sync)
+        {
+            var topic = _data.Topics.FirstOrDefault(item => item.Id == topicId);
+            if (topic is null) return;
+            topic.Card_Count = _data.Vocab_Cards.Count(card => card.Topic_Id == topicId);
+            Save();
+        }
+    }
 
     public List<VocabCard> GetCardsByTopic(string topicId) => _data.Vocab_Cards.Where(c => c.Topic_Id == topicId).ToList();
     public List<VocabCard> GetAllCards() => _data.Vocab_Cards;
@@ -306,7 +316,13 @@ public class JsonDatabase
         }).Cast<object>().ToList();
     }
 
-    public AiConfig GetAiConfig() => _data.Ai_Config;
+    public AiConfig GetAiConfig()
+    {
+        if (string.IsNullOrWhiteSpace(_data.Ai_Config.Model_Name)
+            || _data.Ai_Config.Model_Name.Equals("gemini-2.5-flash", StringComparison.OrdinalIgnoreCase))
+            _data.Ai_Config.Model_Name = "gemini-3.8-flash";
+        return _data.Ai_Config;
+    }
     public AiConfig UpdateAiConfig(AiConfig cfg) { lock (_sync) { _data.Ai_Config = cfg; Save(); return _data.Ai_Config; } }
 
     public List<ApiLog> GetApiLogs(int limit = 50) => _data.Api_Logs.Take(limit).ToList();

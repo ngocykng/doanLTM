@@ -14,6 +14,17 @@ Project gồm hai thành phần C#:
 
 Trong ứng dụng desktop, chọn **Đăng nhập** hoặc chuyển sang chế độ tạo tài khoản mới ở màn hình tài khoản. API phải đang chạy trước khi sử dụng các chức năng này.
 
+## Quản lý chủ đề
+
+Đăng nhập bằng tài khoản **student** để:
+
+- Tạo chủ đề (tên tối đa 80 ký tự), chọn cấp CEFR A1–C2 và yêu cầu Gemini sinh bộ flashcard.
+- Tải lại danh sách chủ đề, xem cấp độ và số thẻ, rồi mở chủ đề để học bằng flashcard.
+- Sinh thêm tối đa 15 từ mới cho chủ đề đang chọn; từ đã có sẽ bị loại trừ.
+- Xóa chủ đề sau khi xác nhận; các flashcard thuộc chủ đề đó cũng bị xóa.
+
+Tên chủ đề không được trùng trong cùng tài khoản (không phân biệt chữ hoa/thường). Cần cấu hình `GEMINI_API_KEY` trước khi yêu cầu sinh từ.
+
 ## Yêu cầu
 
 - Windows 10/11.
@@ -56,7 +67,7 @@ Có thể mở solution `LTM.slnx` bằng Visual Studio 2022 có hỗ trợ .NET
 
 ### Tính năng AI (tùy chọn)
 
-Một số chức năng tạo từ vựng cần Gemini API key. Đặt key trong biến môi trường `GEMINI_API_KEY` trên máy cá nhân trước khi chạy API. Không ghi API key, mật khẩu hoặc thông tin riêng tư vào source code hay commit lên GitHub.
+Một số chức năng tạo từ vựng cần Gemini API key. Tạo file `.env` tại thư mục gốc project và đặt `GEMINI_API_KEY=your_new_key` trong đó. Khởi động lại API sau khi sửa file. `.env` đã được Git ignore; không ghi API key vào source code hoặc commit lên GitHub.
 
 ## Làm việc nhóm bằng branch
 

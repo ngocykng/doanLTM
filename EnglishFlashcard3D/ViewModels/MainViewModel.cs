@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Windows;
 using System.Windows.Input;
 using EnglishFlashcard3D.Models;
 using EnglishFlashcard3D.Services;
@@ -16,6 +17,7 @@ public class MainViewModel : BaseViewModel
     private int _activeTabIndex;
     private string _statusMessage = "Sẵn sàng";
     private bool _isLoggedIn;
+    private bool _isTopicBusy;
     private TopicDeck? _selectedTopic;
     private string _newTopicName = string.Empty;
     private string _selectedCefr = "B1";
@@ -55,11 +57,23 @@ public class MainViewModel : BaseViewModel
         UserStatuses = new ObservableCollection<string> { "active", "suspended" };
 
         LoginCommand = new RelayCommand(_ => _ = LoginAsync());
-        LogoutCommand = new RelayCommand(_ => { IsLoggedIn = false; CurrentUser = null; Email = string.Empty; Password = string.Empty; StatusMessage = "Bạn đã đăng xuất."; });
+        LogoutCommand = new RelayCommand(_ =>
+        {
+            IsLoggedIn = false;
+            CurrentUser = null;
+            SelectedTopic = null;
+            Topics.Clear();
+            FlashcardSession.SetCards(new List<EnglishFlashcard>());
+            Email = string.Empty;
+            Password = string.Empty;
+            StatusMessage = "Bạn đã đăng xuất.";
+        });
         ToggleRegisterCommand = new RelayCommand(_ => { IsRegistering = !IsRegistering; StatusMessage = IsRegistering ? "Tạo tài khoản mới (role mặc định: student)." : "Đăng nhập bằng tài khoản của bạn."; });
-        LoadTopicsCommand = new RelayCommand(_ => _ = LoadTopicsAsync(), _ => IsLoggedIn);
-        GenerateTopicCommand = new RelayCommand(_ => _ = GenerateTopicAsync(), _ => IsLoggedIn && !string.IsNullOrWhiteSpace(NewTopicName));
-        OpenTopicCommand = new RelayCommand(_ => _ = OpenSelectedTopicAsync(), _ => IsLoggedIn && SelectedTopic is not null);
+        LoadTopicsCommand = new RelayCommand(_ => _ = LoadTopicsAsync(), _ => IsStudent && !IsTopicBusy);
+        GenerateTopicCommand = new RelayCommand(_ => _ = GenerateTopicAsync(), _ => IsStudent && !IsTopicBusy && !string.IsNullOrWhiteSpace(NewTopicName) && NewTopicName.Trim().Length <= 80);
+        OpenTopicCommand = new RelayCommand(_ => _ = OpenSelectedTopicAsync(), _ => IsStudent && !IsTopicBusy && SelectedTopic is not null);
+        GenerateBatchCommand = new RelayCommand(_ => _ = GenerateBatchAsync(), _ => IsStudent && !IsTopicBusy && SelectedTopic is not null);
+        DeleteTopicCommand = new RelayCommand(_ => _ = DeleteTopicAsync(), _ => IsStudent && !IsTopicBusy && SelectedTopic is not null);
         RefreshF4Command = new RelayCommand(_ => _ = LoadF4Async(), _ => IsLoggedIn);
         CreateAssignmentCommand = new RelayCommand(_ => _ = CreateAssignmentAsync(), _ => IsRole("expert") && !string.IsNullOrWhiteSpace(AssignmentTitle) && !string.IsNullOrWhiteSpace(AssignmentInstructions));
         DeleteAssignmentCommand = new RelayCommand(_ => _ = DeleteAssignmentAsync(), _ => IsRole("expert") && SelectedAssignment is not null);
@@ -92,6 +106,14 @@ public class MainViewModel : BaseViewModel
     public int ActiveTabIndex { get => _activeTabIndex; set => SetField(ref _activeTabIndex, value); }
     public bool IsLoggedOut => !IsLoggedIn;
     public bool IsStudent => IsRole("student");
+    public bool IsTopicBusy
+    {
+        get => _isTopicBusy;
+        private set
+        {
+            if (SetField(ref _isTopicBusy, value)) RaiseCommandStates();
+        }
+    }
     public bool IsExpert => IsRole("expert");
     public bool IsAdmin => IsRole("admin");
     public bool IsAssessmentUser => IsStudent || IsExpert;
@@ -175,6 +197,8 @@ public class MainViewModel : BaseViewModel
     public ICommand LoadTopicsCommand { get; }
     public ICommand GenerateTopicCommand { get; }
     public ICommand OpenTopicCommand { get; }
+    public ICommand GenerateBatchCommand { get; }
+    public ICommand DeleteTopicCommand { get; }
     public ICommand RefreshF4Command { get; }
     public ICommand CreateAssignmentCommand { get; }
     public ICommand DeleteAssignmentCommand { get; }
@@ -231,35 +255,40 @@ public class MainViewModel : BaseViewModel
     }
     private async Task LoadTopicsAsync()
     {
+        if (!IsStudent || CurrentUser is null || IsTopicBusy) return;
+        IsTopicBusy = true;
         try
         {
-            if (CurrentUser is null) return;
+            var selectedId = SelectedTopic?.Id;
             var items = await _apiClient.GetTopicsAsync(CurrentUser.Id);
             Topics.Clear();
-            foreach (var item in items)
-            {
-                Topics.Add(item);
-            }
+            foreach (var item in items) Topics.Add(item);
 
+            SelectedTopic = Topics.FirstOrDefault(topic => topic.Id == selectedId);
+            if (SelectedTopic is null) FlashcardSession.SetCards(new List<EnglishFlashcard>());
             StatusMessage = $"Đã tải {Topics.Count} chủ đề";
         }
-        catch
+        catch (Exception ex)
         {
-            StatusMessage = "Tải danh sách chủ đề thất bại.";
+            StatusMessage = $"Tải danh sách chủ đề thất bại: {ex.Message}";
+        }
+        finally
+        {
+            IsTopicBusy = false;
         }
     }
 
     private async Task GenerateTopicAsync()
     {
+        if (!IsStudent || CurrentUser is null || string.IsNullOrWhiteSpace(NewTopicName) || IsTopicBusy) return;
+        IsTopicBusy = true;
         try
         {
-            StatusMessage = "Đang gọi Gemini tạo bộ từ vựng...";
-            if (CurrentUser is null) return;
+            StatusMessage = $"Đang tạo bộ từ vựng cho «{NewTopicName.Trim()}»...";
             var topic = await _apiClient.GenerateTopicAsync(NewTopicName.Trim(), SelectedCefr, CurrentUser.Id);
             if (topic is null)
             {
-                StatusMessage = "Gemini không trả về chủ đề.";
-                return;
+                throw new InvalidOperationException("API không trả về chủ đề.");
             }
 
             Topics.Insert(0, topic);
@@ -272,21 +301,102 @@ public class MainViewModel : BaseViewModel
         {
             StatusMessage = $"Không thể tạo từ vựng: {ex.Message}";
         }
+        finally
+        {
+            IsTopicBusy = false;
+        }
     }
     private async Task OpenSelectedTopicAsync()
     {
-        if (SelectedTopic is null) return;
+        if (!IsStudent || SelectedTopic is null || CurrentUser is null) return;
 
         try
         {
-            if (CurrentUser is null) return;
             var cards = await _apiClient.GetTopicCardsAsync(SelectedTopic.Id, CurrentUser.Id);
             FlashcardSession.SetCards(cards);
             StatusMessage = $"Đã mở chủ đề: {SelectedTopic.Name} ({cards.Count} thẻ)";
         }
-        catch
+        catch (Exception ex)
         {
-            StatusMessage = "Không tải được thẻ của chủ đề.";
+            FlashcardSession.SetCards(new List<EnglishFlashcard>());
+            StatusMessage = $"Không tải được thẻ của chủ đề: {ex.Message}";
+        }
+    }
+
+    private async Task GenerateBatchAsync()
+    {
+        if (!IsStudent || SelectedTopic is null || CurrentUser is null || IsTopicBusy) return;
+        IsTopicBusy = true;
+        var topic = SelectedTopic;
+        try
+        {
+            StatusMessage = $"Đang sinh thêm từ mới cho «{topic.Name}»...";
+            var result = await _apiClient.GenerateBatchAsync(topic.Id, CurrentUser.Id);
+            var updatedTopic = new TopicDeck
+            {
+                Id = topic.Id,
+                Name = topic.Name,
+                Level = topic.Level,
+                CardCount = result.TotalCards
+            };
+            var topicIndex = Topics.IndexOf(topic);
+            if (topicIndex < 0)
+            {
+                IsTopicBusy = false;
+                await LoadTopicsAsync();
+                return;
+            }
+            Topics[topicIndex] = updatedTopic;
+            SelectedTopic = updatedTopic;
+            await OpenSelectedTopicAsync();
+            StatusMessage = $"Đã thêm {result.NewCards.Count} từ mới vào «{topic.Name}». Tổng cộng {result.TotalCards} thẻ.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Không thể sinh thêm từ: {ex.Message}";
+        }
+        finally
+        {
+            IsTopicBusy = false;
+        }
+    }
+
+    private async Task DeleteTopicAsync()
+    {
+        if (!IsStudent || SelectedTopic is null || CurrentUser is null || IsTopicBusy) return;
+        var topic = SelectedTopic;
+        var confirm = MessageBox.Show(
+            $"Xóa chủ đề «{topic.Name}» và toàn bộ {topic.CardCount} thẻ từ vựng liên quan?",
+            "Xác nhận xóa chủ đề",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+        if (confirm != MessageBoxResult.Yes) return;
+
+        IsTopicBusy = true;
+        try
+        {
+            StatusMessage = $"Đang xóa «{topic.Name}»...";
+            if (!await _apiClient.DeleteTopicAsync(topic.Id, CurrentUser.Id))
+            {
+                StatusMessage = "Xóa chủ đề thất bại. Hãy tải lại danh sách và thử lại.";
+                return;
+            }
+
+            Topics.Remove(topic);
+            SelectedTopic = Topics.FirstOrDefault();
+            if (SelectedTopic is null)
+                FlashcardSession.SetCards(new List<EnglishFlashcard>());
+            else
+                await OpenSelectedTopicAsync();
+            StatusMessage = $"Đã xóa chủ đề «{topic.Name}» và các thẻ liên quan.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Không thể xóa chủ đề: {ex.Message}";
+        }
+        finally
+        {
+            IsTopicBusy = false;
         }
     }
 
@@ -301,6 +411,8 @@ public class MainViewModel : BaseViewModel
         if (LoadTopicsCommand is RelayCommand load) load.RaiseCanExecuteChanged();
         if (GenerateTopicCommand is RelayCommand gen) gen.RaiseCanExecuteChanged();
         if (OpenTopicCommand is RelayCommand open) open.RaiseCanExecuteChanged();
+        if (GenerateBatchCommand is RelayCommand batch) batch.RaiseCanExecuteChanged();
+        if (DeleteTopicCommand is RelayCommand deleteTopic) deleteTopic.RaiseCanExecuteChanged();
         foreach (var command in new[] { RefreshF4Command, CreateAssignmentCommand, DeleteAssignmentCommand, SubmitWorkCommand, GradeWorkCommand, RefreshAdminCommand, SyncMysqlCommand, SaveUserCommand, SaveAiConfigCommand, AddCurriculumCommand, DeleteCurriculumCommand })
             if (command is RelayCommand relay) relay.RaiseCanExecuteChanged();
     }
