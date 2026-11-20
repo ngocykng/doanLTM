@@ -103,7 +103,11 @@ public class ApiClientService
     public async Task<bool> MarkCardLearnedAsync(string cardId, string userId)
     {
         using var content = new StringContent("{}", Encoding.UTF8, "application/json");
-        var response = await _httpClient.PostAsync($"api/vocab/cards/{cardId}/toggle-learned?user_id={Uri.EscapeDataString(userId)}", content);
+        var response = await _httpClient.PatchAsync($"api/vocab/cards/{cardId}/learned?user_id={Uri.EscapeDataString(userId)}", content);
+        if (!response.IsSuccessStatusCode)
+        {
+            response = await _httpClient.PostAsync($"api/vocab/cards/{cardId}/toggle-learned?user_id={Uri.EscapeDataString(userId)}", content);
+        }
         return response.IsSuccessStatusCode;
     }
     public async Task<List<ApiAssignment>> GetStudentAssignmentsAsync()

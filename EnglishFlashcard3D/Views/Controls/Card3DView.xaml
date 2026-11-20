@@ -4,62 +4,235 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d"
-             d:DesignHeight="360" d:DesignWidth="640">
-    <Grid Margin="8">
+             d:DesignHeight="420" d:DesignWidth="680">
+    <UserControl.Resources>
+        <!-- Storyboard Xoay sang mặt sau -->
+        <Storyboard x:Key="FlipToBackStoryboard">
+            <DoubleAnimation Storyboard.TargetName="FrontScale"
+                             Storyboard.TargetProperty="ScaleX"
+                             From="1.0" To="0.0" Duration="0:0:0.18">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseIn"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <ObjectAnimationUsingKeyFrames Storyboard.TargetName="FrontFace"
+                                           Storyboard.TargetProperty="Visibility"
+                                           Duration="0:0:0.18">
+                <DiscreteObjectKeyFrame KeyTime="0:0:0.18" Value="{x:Static Visibility.Collapsed}"/>
+            </ObjectAnimationUsingKeyFrames>
+            <ObjectAnimationUsingKeyFrames Storyboard.TargetName="BackFace"
+                                           Storyboard.TargetProperty="Visibility"
+                                           Duration="0:0:0.18">
+                <DiscreteObjectKeyFrame KeyTime="0:0:0.18" Value="{x:Static Visibility.Visible}"/>
+            </ObjectAnimationUsingKeyFrames>
+            <DoubleAnimation Storyboard.TargetName="BackScale"
+                             Storyboard.TargetProperty="ScaleX"
+                             From="0.0" To="1.0" BeginTime="0:0:0.18" Duration="0:0:0.18">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseOut"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+        </Storyboard>
+
+        <!-- Storyboard Xoay về mặt trước -->
+        <Storyboard x:Key="FlipToFrontStoryboard">
+            <DoubleAnimation Storyboard.TargetName="BackScale"
+                             Storyboard.TargetProperty="ScaleX"
+                             From="1.0" To="0.0" Duration="0:0:0.18">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseIn"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <ObjectAnimationUsingKeyFrames Storyboard.TargetName="BackFace"
+                                           Storyboard.TargetProperty="Visibility"
+                                           Duration="0:0:0.18">
+                <DiscreteObjectKeyFrame KeyTime="0:0:0.18" Value="{x:Static Visibility.Collapsed}"/>
+            </ObjectAnimationUsingKeyFrames>
+            <ObjectAnimationUsingKeyFrames Storyboard.TargetName="FrontFace"
+                                           Storyboard.TargetProperty="Visibility"
+                                           Duration="0:0:0.18">
+                <DiscreteObjectKeyFrame KeyTime="0:0:0.18" Value="{x:Static Visibility.Visible}"/>
+            </ObjectAnimationUsingKeyFrames>
+            <DoubleAnimation Storyboard.TargetName="FrontScale"
+                             Storyboard.TargetProperty="ScaleX"
+                             From="0.0" To="1.0" BeginTime="0:0:0.18" Duration="0:0:0.18">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseOut"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+        </Storyboard>
+    </UserControl.Resources>
+
+    <Grid Margin="10" MinHeight="380" MaxWidth="720">
+        <!-- MẶT TRƯỚC (FRONT FACE) -->
         <Border x:Name="FrontFace"
-                Background="#FF1E293B"
-                BorderBrush="#FF334155"
-                BorderThickness="1"
-                CornerRadius="18"
-                Padding="24"
+                CornerRadius="20"
+                BorderThickness="1.5"
+                BorderBrush="#38BDF8"
+                Padding="28"
+                Cursor="Hand"
+                MouseLeftButtonUp="OnCardFaceClicked"
                 RenderTransformOrigin="0.5,0.5">
-            <Border.Style>
-                <Style TargetType="Border">
-                    <Setter Property="Visibility" Value="Visible"/>
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding IsFlipped}" Value="True">
-                            <Setter Property="Visibility" Value="Collapsed"/>
-                        </DataTrigger>
-                    </Style.Triggers>
-                </Style>
-            </Border.Style>
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Color="#FF1E293B" Offset="0.0"/>
+                    <GradientStop Color="#FF0F172A" Offset="1.0"/>
+                </LinearGradientBrush>
+            </Border.Background>
+            <Border.RenderTransform>
+                <ScaleTransform x:Name="FrontScale" ScaleX="1.0" ScaleY="1.0"/>
+            </Border.RenderTransform>
             <Border.Effect>
-                <DropShadowEffect BlurRadius="20" ShadowDepth="6" Opacity="0.35"/>
+                <DropShadowEffect BlurRadius="28" ShadowDepth="8" Direction="270" Color="#0284C7" Opacity="0.3"/>
             </Border.Effect>
-            <StackPanel VerticalAlignment="Center">
-                <TextBlock Text="{Binding CurrentCard.Word}" FontSize="42" Foreground="White" FontWeight="Bold" TextAlignment="Center"/>
-                <TextBlock Text="{Binding CurrentCard.Phonetic}" Margin="0,10,0,0" FontSize="20" Foreground="#93C5FD" TextAlignment="Center"/>
-                <TextBlock Text="{Binding CurrentCard.PartOfSpeech}" Margin="0,18,0,0" FontSize="16" Foreground="#CBD5E1" TextAlignment="Center"/>
-                <TextBlock Text="Nhấn Space để lật thẻ" Margin="0,28,0,0" FontSize="14" Foreground="#94A3B8" TextAlignment="Center"/>
-            </StackPanel>
+
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Thanh Header mặt trước -->
+                <DockPanel Grid.Row="0">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border Background="#0369A1" CornerRadius="8" Padding="10,4" Margin="0,0,8,0">
+                            <TextBlock Text="{Binding CurrentCard.PartOfSpeech, FallbackValue='Từ vựng'}" Foreground="White" FontWeight="Bold" FontSize="13"/>
+                        </Border>
+                        <Border Background="{Binding CurrentCard.StatusBadgeBackground, FallbackValue='#334155'}"
+                                CornerRadius="8" Padding="10,4">
+                            <TextBlock Text="{Binding CurrentCard.StatusBadgeText, FallbackValue='⏳ Cần ôn tập'}"
+                                       Foreground="{Binding CurrentCard.StatusBadgeForeground, FallbackValue='#94A3B8'}"
+                                       FontWeight="SemiBold" FontSize="12"/>
+                        </Border>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" HorizontalAlignment="Right">
+                        <Button Content="🔊 Nghe" Command="{Binding PronounceCommand}"
+                                Click="ActionButton_Click"
+                                Background="#1E293B" Foreground="#38BDF8" BorderBrush="#0284C7" BorderThickness="1"
+                                Padding="10,4" Margin="0,0,6,0" Cursor="Hand" ToolTip="Phát âm tiếng Anh (P)"/>
+                        <Button Content="📋 Chép" Command="{Binding CopyCommand}"
+                                Click="ActionButton_Click"
+                                Background="#1E293B" Foreground="#CBD5E1" BorderBrush="#475569" BorderThickness="1"
+                                Padding="10,4" Cursor="Hand" ToolTip="Sao chép từ vựng (C)"/>
+                    </StackPanel>
+                </DockPanel>
+
+                <!-- Thân thẻ mặt trước -->
+                <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center">
+                    <TextBlock Text="{Binding CurrentCard.Word, FallbackValue='Flashcard'}"
+                               FontSize="46" FontWeight="ExtraBold" Foreground="#FFFFFF"
+                               TextAlignment="Center" TextWrapping="Wrap">
+                        <TextBlock.Effect>
+                            <DropShadowEffect BlurRadius="12" ShadowDepth="3" Color="#000000" Opacity="0.4"/>
+                        </TextBlock.Effect>
+                    </TextBlock>
+                    <TextBlock Text="{Binding CurrentCard.Phonetic, FallbackValue='/ipa/'}"
+                               Margin="0,10,0,0" FontSize="22" Foreground="#38BDF8"
+                               FontStyle="Italic" TextAlignment="Center"/>
+                    <Button Command="{Binding PronounceCommand}" Click="ActionButton_Click"
+                            Margin="0,22,0,0" Padding="18,8"
+                            Background="#0284C7" Foreground="White" FontWeight="Bold" FontSize="14"
+                            BorderThickness="0" Cursor="Hand" HorizontalAlignment="Center">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="🔊 Phát âm chuẩn (P)"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+
+                <!-- Footer mặt trước -->
+                <TextBlock Grid.Row="2" Text="🖱️ Nhấp chuột hoặc bấm [Space] để lật mặt sau ↻"
+                           Foreground="#64748B" FontSize="13" FontWeight="Medium"
+                           HorizontalAlignment="Center" Margin="0,10,0,0"/>
+            </Grid>
         </Border>
 
+        <!-- MẶT SAU (BACK FACE) -->
         <Border x:Name="BackFace"
-                Background="#FF0F172A"
-                BorderBrush="#FF334155"
-                BorderThickness="1"
-                CornerRadius="18"
-                Padding="24"
+                CornerRadius="20"
+                BorderThickness="1.5"
+                BorderBrush="#10B981"
+                Padding="28"
+                Cursor="Hand"
+                Visibility="Collapsed"
+                MouseLeftButtonUp="OnCardFaceClicked"
                 RenderTransformOrigin="0.5,0.5">
-            <Border.Style>
-                <Style TargetType="Border">
-                    <Setter Property="Visibility" Value="Collapsed"/>
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding IsFlipped}" Value="True">
-                            <Setter Property="Visibility" Value="Visible"/>
-                        </DataTrigger>
-                    </Style.Triggers>
-                </Style>
-            </Border.Style>
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Color="#FF064E3B" Offset="0.0"/>
+                    <GradientStop Color="#FF0F172A" Offset="0.8"/>
+                </LinearGradientBrush>
+            </Border.Background>
+            <Border.RenderTransform>
+                <ScaleTransform x:Name="BackScale" ScaleX="1.0" ScaleY="1.0"/>
+            </Border.RenderTransform>
             <Border.Effect>
-                <DropShadowEffect BlurRadius="20" ShadowDepth="6" Opacity="0.35"/>
+                <DropShadowEffect BlurRadius="28" ShadowDepth="8" Direction="270" Color="#059669" Opacity="0.3"/>
             </Border.Effect>
-            <StackPanel>
-                <TextBlock Text="{Binding CurrentCard.MeaningVi}" FontSize="28" Foreground="#F8FAFC" FontWeight="SemiBold" TextWrapping="Wrap"/>
-                <TextBlock Text="{Binding CurrentCard.ExampleEn}" Margin="0,20,0,0" FontSize="16" Foreground="#CBD5E1" TextWrapping="Wrap"/>
-                <TextBlock Text="{Binding CurrentCard.ExampleVi}" Margin="0,8,0,0" FontSize="16" Foreground="#93C5FD" TextWrapping="Wrap"/>
-                <TextBlock Text="{Binding CurrentCard.Note}" Margin="0,16,0,0" FontSize="14" Foreground="#94A3B8" TextWrapping="Wrap"/>
-            </StackPanel>
+
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Thanh Header mặt sau -->
+                <DockPanel Grid.Row="0">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding CurrentCard.Word}" Foreground="#94A3B8" FontWeight="Bold" FontSize="14"/>
+                        <TextBlock Text="{Binding CurrentCard.Phonetic}" Foreground="#64748B" FontStyle="Italic" FontSize="13" Margin="8,0,0,0"/>
+                        <Border Background="{Binding CurrentCard.StatusBadgeBackground, FallbackValue='#334155'}"
+                                CornerRadius="8" Padding="10,4" Margin="12,0,0,0">
+                            <TextBlock Text="{Binding CurrentCard.StatusBadgeText, FallbackValue='⏳ Cần ôn tập'}"
+                                       Foreground="{Binding CurrentCard.StatusBadgeForeground, FallbackValue='#94A3B8'}"
+                                       FontWeight="SemiBold" FontSize="12"/>
+                        </Border>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" HorizontalAlignment="Right">
+                        <Button Content="🔊 Nghe" Command="{Binding PronounceCommand}"
+                                Click="ActionButton_Click"
+                                Background="#1E293B" Foreground="#34D399" BorderBrush="#059669" BorderThickness="1"
+                                Padding="10,4" Margin="0,0,6,0" Cursor="Hand"/>
+                        <Button Content="📋 Chép" Command="{Binding CopyCommand}"
+                                Click="ActionButton_Click"
+                                Background="#1E293B" Foreground="#CBD5E1" BorderBrush="#475569" BorderThickness="1"
+                                Padding="10,4" Cursor="Hand"/>
+                    </StackPanel>
+                </DockPanel>
+
+                <!-- Thân thẻ mặt sau -->
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="0,10,0,6">
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="ĐỊNH NGHĨA / NGHĨA TIẾNG VIỆT:" Foreground="#6EE7B7" FontSize="12" FontWeight="Bold"/>
+                        <TextBlock Text="{Binding CurrentCard.MeaningVi}"
+                                   FontSize="26" FontWeight="Bold" Foreground="#34D399"
+                                   TextWrapping="Wrap" Margin="0,4,0,14"/>
+
+                        <TextBlock Text="CÂU VÍ DỤ THỰC TẾ:" Foreground="#94A3B8" FontSize="12" FontWeight="Bold"/>
+                        <TextBlock Text="{Binding CurrentCard.ExampleEn}"
+                                   FontSize="16" FontStyle="Italic" Foreground="#F8FAFC"
+                                   TextWrapping="Wrap" Margin="0,4,0,4"/>
+                        <TextBlock Text="{Binding CurrentCard.ExampleVi}"
+                                   FontSize="15" Foreground="#93C5FD"
+                                   TextWrapping="Wrap" Margin="0,0,0,14"/>
+
+                        <!-- Ghi chú / ghi chép của sinh viên -->
+                        <TextBlock Text="GHI CHÉP / NGỮ CẢNH HỌC TẬP:" Foreground="#94A3B8" FontSize="12" FontWeight="Bold"/>
+                        <TextBox Text="{Binding CurrentCard.Note, UpdateSourceTrigger=PropertyChanged}"
+                                 PreviewMouseDown="NoteBox_PreviewMouseDown"
+                                 Background="#FF111827" Foreground="#F1F5F9" BorderBrush="#334155"
+                                 Padding="8" Margin="0,4,0,0" TextWrapping="Wrap" MinHeight="42" MaxHeight="60"/>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- Footer mặt sau -->
+                <TextBlock Grid.Row="2" Text="🖱️ Nhấp chuột hoặc bấm [Space] để quay lại mặt trước ↺"
+                           Foreground="#64748B" FontSize="13" FontWeight="Medium"
+                           HorizontalAlignment="Center" Margin="0,6,0,0"/>
+            </Grid>
         </Border>
     </Grid>
 </UserControl>
