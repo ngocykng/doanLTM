@@ -621,7 +621,14 @@ app.MapPost("/api/vocab/cards/{cardId}/toggle-learned", (string cardId, string? 
     if (string.IsNullOrWhiteSpace(user_id) || !db.IsCardOwnedByUser(cardId, user_id)) return Results.NotFound(new { error = "Card not found for this account." });
     var card = db.ToggleCardLearned(cardId);
     return card is null ? Results.NotFound(new { error = "Card not found." }) : Results.Json(new { success = true, card });
-});app.MapGet("/api/vocab/{topicId}", (string topicId, string? user_id, JsonDatabase db) =>
+});
+app.MapPatch("/api/vocab/cards/{cardId}/learned", (string cardId, string? user_id, JsonDatabase db) =>
+{
+    if (string.IsNullOrWhiteSpace(user_id) || !db.IsCardOwnedByUser(cardId, user_id)) return Results.NotFound(new { error = "Card not found for this account." });
+    var card = db.ToggleCardLearned(cardId);
+    return card is null ? Results.NotFound(new { error = "Card not found." }) : Results.Json(new { success = true, card });
+});
+app.MapGet("/api/vocab/{topicId}", (string topicId, string? user_id, JsonDatabase db) =>
 {
     var topic = string.IsNullOrWhiteSpace(user_id) ? null : db.GetTopicForUser(topicId, user_id);
     return topic is null ? Results.NotFound(new { error = "Topic not found for this account." }) : Results.Json(new { success = true, topic, cards = db.GetCardsByTopic(topicId) });

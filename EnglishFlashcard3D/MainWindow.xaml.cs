@@ -33,6 +33,9 @@ public partial class MainWindow : Window
             Key.Left => vm.FlashcardSession.PrevCommand,
             Key.P => vm.FlashcardSession.PronounceCommand,
             Key.M => vm.FlashcardSession.MarkMasteredCommand,
+            Key.C => vm.FlashcardSession.CopyCommand,
+            Key.S => vm.FlashcardSession.ShuffleCommand,
+            Key.R => vm.FlashcardSession.ResetCommand,
             _ => null
         };
         if (command?.CanExecute(null) == true)

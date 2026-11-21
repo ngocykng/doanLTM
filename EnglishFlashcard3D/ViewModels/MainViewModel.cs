@@ -56,6 +56,7 @@ public class MainViewModel : BaseViewModel
         var localCards = _storageService.LoadDefaultCards();
         FlashcardSession = new Flashcard3DViewModel(localCards);
         FlashcardSession.CardMarkedMastered += OnCardMarkedMastered;
+        FlashcardSession.ToastTriggered += msg => StatusMessage = msg;
 
         Topics = new ObservableCollection<TopicDeck>();
         Assignments = new ObservableCollection<ApiAssignment>();
@@ -371,7 +372,7 @@ public class MainViewModel : BaseViewModel
         {
             if (CurrentUser is null) return;
             var cards = await _apiClient.GetTopicCardsAsync(SelectedTopic.Id, CurrentUser.Id);
-            FlashcardSession.SetCards(cards);
+            FlashcardSession.SetCards(cards, SelectedTopic.Name, SelectedTopic.Level);
             StatusMessage = $"Đã mở chủ đề: {SelectedTopic.Name} ({cards.Count} thẻ)";
         }
         catch
