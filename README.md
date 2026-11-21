@@ -65,9 +65,25 @@ dotnet run --project EnglishFlashcard3D/EnglishFlashcard3D.csproj
 
 Có thể mở solution `LTM.slnx` bằng Visual Studio 2022 có hỗ trợ .NET để chạy hoặc debug từng project.
 
-### Tính năng AI (tùy chọn)
+### Cấu hình Gemini API key (tùy chọn)
 
-Một số chức năng tạo từ vựng cần Gemini API key. Tạo file `.env` tại thư mục gốc project và đặt `GEMINI_API_KEY=your_new_key` trong đó. Khởi động lại API sau khi sửa file. `.env` đã được Git ignore; không ghi API key vào source code hoặc commit lên GitHub.
+Một số chức năng tạo từ vựng cần Gemini API key:
+
+1. Tại thư mục gốc project, sao chép file mẫu `.env.example` thành `.env`:
+
+   ```powershell
+   Copy-Item .env.example .env
+   ```
+
+2. Mở file `.env`, thay `your_gemini_api_key` bằng Gemini API key của bạn:
+
+   ```dotenv
+   GEMINI_API_KEY=your_gemini_api_key
+   ```
+
+3. Lưu file và khởi động lại API.
+
+Chỉ sửa giá trị giữ chỗ trong `.env.example` nếu muốn thay đổi nội dung mẫu cho mọi người. Không điền API key thật vào `.env.example`; file `.env` đã được Git ignore và không được commit lên GitHub.
 
 ## Làm việc nhóm bằng branch
 
