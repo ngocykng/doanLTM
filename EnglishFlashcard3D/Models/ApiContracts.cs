@@ -116,6 +116,12 @@ public class ApiAssignment
     [JsonPropertyName("id")]
     public string Id { get; set; } = string.Empty;
 
+    [JsonPropertyName("expert_id")]
+    public string Expert_Id { get; set; } = string.Empty;
+
+    [JsonPropertyName("expert_name")]
+    public string Expert_Name { get; set; } = string.Empty;
+
     [JsonPropertyName("title")]
     public string Title { get; set; } = string.Empty;
 
@@ -123,12 +129,26 @@ public class ApiAssignment
     public string Skill { get; set; } = "writing";
 
     [JsonPropertyName("target_level")]
-    public string Target_Level { get; set; } = "B1";
+    public string Target_Level { get; set; } = "B2";
+
+    [JsonPropertyName("duration_minutes")]
+    public int Duration_Minutes { get; set; } = 45;
+
+    [JsonPropertyName("content")]
+    public string Content { get; set; } = string.Empty;
 
     [JsonPropertyName("instructions")]
     public string Instructions { get; set; } = string.Empty;
+
     [JsonPropertyName("due_date")]
     public string? Due_Date { get; set; }
+
+    [JsonPropertyName("max_score")]
+    public double Max_Score { get; set; } = 10.0;
+
+    [JsonPropertyName("reading_quiz")]
+    public string? Reading_Quiz { get; set; }
+
     [JsonPropertyName("submission_count")]
     public int Submission_Count { get; set; }
 }
@@ -142,19 +162,58 @@ public class SubmissionsResponse
     public List<ApiSubmission> Submissions { get; set; } = new();
 }
 
+public class SubmissionDetailResponse
+{
+    [JsonPropertyName("success")]
+    public bool Success { get; set; }
+
+    [JsonPropertyName("submission")]
+    public ApiSubmission? Submission { get; set; }
+}
+
 public class ApiSubmission
 {
     [JsonPropertyName("id")]
     public string Id { get; set; } = string.Empty;
 
+    [JsonPropertyName("assignment_id")]
+    public string Assignment_Id { get; set; } = string.Empty;
+
     [JsonPropertyName("assignment_title")]
     public string Assignment_Title { get; set; } = string.Empty;
+
+    [JsonPropertyName("skill")]
+    public string Skill { get; set; } = "writing";
+
+    [JsonPropertyName("student_id")]
+    public string Student_Id { get; set; } = string.Empty;
 
     [JsonPropertyName("student_name")]
     public string Student_Name { get; set; } = string.Empty;
 
+    [JsonPropertyName("student_code")]
+    public string? Student_Code { get; set; }
+
+    [JsonPropertyName("student_department")]
+    public string? Student_Department { get; set; }
+
     [JsonPropertyName("content")]
     public string Content { get; set; } = string.Empty;
+
+    [JsonPropertyName("audio_url")]
+    public string? Audio_Url { get; set; }
+
+    [JsonPropertyName("reading_answers")]
+    public string? Reading_Answers { get; set; }
+
+    [JsonPropertyName("reading_auto_score")]
+    public double? Reading_Auto_Score { get; set; }
+
+    [JsonPropertyName("topic_sentence")]
+    public string? Topic_Sentence { get; set; }
+
+    [JsonPropertyName("duration_spent")]
+    public int? Duration_Spent { get; set; }
 
     [JsonPropertyName("status")]
     public string Status { get; set; } = "pending";
@@ -164,12 +223,16 @@ public class ApiSubmission
 
     [JsonPropertyName("feedback")]
     public string? Feedback { get; set; }
-    [JsonPropertyName("assignment_id")]
-    public string Assignment_Id { get; set; } = string.Empty;
-    [JsonPropertyName("student_id")]
-    public string Student_Id { get; set; } = string.Empty;
+
     [JsonPropertyName("assessed_level")]
     public string? Assessed_Level { get; set; }
+
+    [JsonPropertyName("graded_by")]
+    public string? Graded_By { get; set; }
+
+    [JsonPropertyName("graded_at")]
+    public string? Graded_At { get; set; }
+
     [JsonPropertyName("submitted_at")]
     public string Submitted_At { get; set; } = string.Empty;
 }
