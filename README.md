@@ -14,6 +14,17 @@ Project gồm hai thành phần C#:
 
 Trong ứng dụng desktop, chọn **Đăng nhập** hoặc chuyển sang chế độ tạo tài khoản mới ở màn hình tài khoản. API phải đang chạy trước khi sử dụng các chức năng này.
 
+## Quản lý chủ đề
+
+Đăng nhập bằng tài khoản **student** để:
+
+- Tạo chủ đề (tên tối đa 80 ký tự), chọn cấp CEFR A1–C2 và yêu cầu Gemini sinh bộ flashcard.
+- Tải lại danh sách chủ đề, xem cấp độ và số thẻ, rồi mở chủ đề để học bằng flashcard.
+- Sinh thêm tối đa 15 từ mới cho chủ đề đang chọn; từ đã có sẽ bị loại trừ.
+- Xóa chủ đề sau khi xác nhận; các flashcard thuộc chủ đề đó cũng bị xóa.
+
+Tên chủ đề không được trùng trong cùng tài khoản (không phân biệt chữ hoa/thường). Cần cấu hình `GEMINI_API_KEY` trước khi yêu cầu sinh từ.
+
 ## Yêu cầu
 
 - Windows 10/11.
@@ -54,9 +65,25 @@ dotnet run --project EnglishFlashcard3D/EnglishFlashcard3D.csproj
 
 Có thể mở solution `LTM.slnx` bằng Visual Studio 2022 có hỗ trợ .NET để chạy hoặc debug từng project.
 
-### Tính năng AI (tùy chọn)
+### Cấu hình Gemini API key (tùy chọn)
 
-Một số chức năng tạo từ vựng cần Gemini API key. Đặt key trong biến môi trường `GEMINI_API_KEY` trên máy cá nhân trước khi chạy API. Không ghi API key, mật khẩu hoặc thông tin riêng tư vào source code hay commit lên GitHub.
+Một số chức năng tạo từ vựng cần Gemini API key:
+
+1. Tại thư mục gốc project, sao chép file mẫu `.env.example` thành `.env`:
+
+   ```powershell
+   Copy-Item .env.example .env
+   ```
+
+2. Mở file `.env`, thay `your_gemini_api_key` bằng Gemini API key của bạn:
+
+   ```dotenv
+   GEMINI_API_KEY=your_gemini_api_key
+   ```
+
+3. Lưu file và khởi động lại API.
+
+Chỉ sửa giá trị giữ chỗ trong `.env.example` nếu muốn thay đổi nội dung mẫu cho mọi người. Không điền API key thật vào `.env.example`; file `.env` đã được Git ignore và không được commit lên GitHub.
 
 ## Làm việc nhóm bằng branch
 

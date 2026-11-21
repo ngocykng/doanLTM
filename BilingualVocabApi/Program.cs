@@ -520,13 +520,22 @@ app.MapPost("/api/vocab/generate", async (JsonDatabase db, AiFallbackService ai,
     var topicName = body.TryGetProperty("topic", out var t) ? t.GetString() : null;
     var ownerId = body.TryGetProperty("user_id", out var uid) ? uid.GetString() : null;
     if (string.IsNullOrWhiteSpace(ownerId) || db.GetUser(ownerId)?.Role != "student") return Results.BadRequest(new { error = "Student account is required." });
-    if (string.IsNullOrWhiteSpace(topicName)) return Results.BadRequest(new { error = "Vui lòng cung cấp chủ đề hợp lệ." });
-    var level = body.TryGetProperty("level", out var l) ? l.GetString() ?? "ALL" : "ALL";
+    if (string.IsNullOrWhiteSpace(topicName) || topicName.Trim().Length > 80) return Results.BadRequest(new { error = "Tên chủ đề phải có từ 1 đến 80 ký tự." });
+    var level = body.TryGetProperty("level", out var l) ? l.GetString()?.Trim().ToUpperInvariant() : null;
+    if (level is null || !new[] { "A1", "A2", "B1", "B2", "C1", "C2" }.Contains(level))
+        return Results.BadRequest(new { error = "Vui lòng chọn cấp CEFR từ A1 đến C2." });
+    if (db.GetTopicsForUser(ownerId).Any(topic => topic.Name.Equals(topicName.Trim(), StringComparison.OrdinalIgnoreCase)))
+        return Results.Conflict(new { error = "Tên chủ đề đã tồn tại. Hãy chọn tên khác." });
     var topicId = $"topic-{Guid.NewGuid():N}";
     var topic = new Topic { Id = topicId, Owner_User_Id = ownerId, Name = topicName.Trim(), Created_At = DateTime.UtcNow.ToString("O"), Level = level };
     try
     {
         var cards = await ai.GenerateVocabAsync(topic.Name, level, topicId, db.GetAiConfig());
+        cards = cards
+            .Where(card => !string.IsNullOrWhiteSpace(card.Word_En) && !string.IsNullOrWhiteSpace(card.Meaning_Vi))
+            .GroupBy(card => card.Word_En.Trim(), StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .ToList();
         if (cards.Count == 0) throw new JsonException("Gemini không trả về thẻ từ vựng hợp lệ.");
         topic.Card_Count = cards.Count;
         db.AddTopic(topic);
@@ -535,8 +544,56 @@ app.MapPost("/api/vocab/generate", async (JsonDatabase db, AiFallbackService ai,
     }
     catch (InvalidOperationException ex) { return Results.Json(new { error = ex.Message }, statusCode: 503); }
     catch (HttpRequestException ex) { return Results.Json(new { error = $"Gemini API: {ex.Message}" }, statusCode: 502); }
+    catch (TaskCanceledException ex) { return Results.Json(new { error = $"Gemini API timeout: {ex.Message}" }, statusCode: 504); }
     catch (JsonException ex) { return Results.Json(new { error = $"Không đọc được phản hồi Gemini: {ex.Message}" }, statusCode: 502); }
 });
+
+app.MapPost("/api/vocab/generate-batch", async (JsonDatabase db, AiFallbackService ai, JsonElement body) =>
+{
+    var topicId = body.TryGetProperty("topic_id", out var tid) ? tid.GetString() : null;
+    var ownerId = body.TryGetProperty("user_id", out var uid) ? uid.GetString() : null;
+    if (string.IsNullOrWhiteSpace(ownerId) || db.GetUser(ownerId)?.Role != "student")
+        return Results.BadRequest(new { error = "Student account is required." });
+    if (string.IsNullOrWhiteSpace(topicId))
+        return Results.BadRequest(new { error = "Chủ đề không hợp lệ." });
+
+    var topic = db.GetTopicForUser(topicId, ownerId);
+    if (topic is null) return Results.NotFound(new { error = "Không tìm thấy chủ đề hoặc bạn không có quyền." });
+
+    var existingCards = db.GetCardsByTopic(topicId);
+    var existingWords = existingCards.Select(card => card.Word_En).Where(word => !string.IsNullOrWhiteSpace(word)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+    var batchIndex = existingCards.Count / 15 + 1;
+    try
+    {
+        var newCards = await ai.GenerateVocabAsync(
+            topic.Name, topic.Level ?? "B1", topicId, db.GetAiConfig(),
+            existingWords, batchIndex, existingCards.Count);
+        newCards = newCards
+            .Where(card => !string.IsNullOrWhiteSpace(card.Word_En)
+                && !string.IsNullOrWhiteSpace(card.Meaning_Vi)
+                && !existingWords.Contains(card.Word_En.Trim()))
+            .GroupBy(card => card.Word_En.Trim(), StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .ToList();
+        if (newCards.Count == 0)
+            return Results.Json(new { error = "Không còn từ mới phù hợp cho chủ đề này." }, statusCode: 422);
+
+        db.AddCards(newCards);
+        db.UpdateTopicCardCount(topicId);
+        return Results.Json(new
+        {
+            success = true,
+            topic = db.GetTopic(topicId),
+            new_cards = newCards,
+            total_cards = existingCards.Count + newCards.Count
+        });
+    }
+    catch (InvalidOperationException ex) { return Results.Json(new { error = ex.Message }, statusCode: 503); }
+    catch (HttpRequestException ex) { return Results.Json(new { error = $"Gemini API: {ex.Message}" }, statusCode: 502); }
+    catch (TaskCanceledException ex) { return Results.Json(new { error = $"Gemini API timeout: {ex.Message}" }, statusCode: 504); }
+    catch (JsonException ex) { return Results.Json(new { error = $"Không đọc được phản hồi Gemini: {ex.Message}" }, statusCode: 502); }
+});
+
 app.MapPost("/api/vocab/autofill", (AiFallbackService ai, JsonElement body) =>
 {
     var input = body.TryGetProperty("input_word", out var iw) ? iw.GetString() : body.TryGetProperty("inputWord", out var iw2) ? iw2.GetString() : null;
@@ -553,9 +610,14 @@ app.MapPost("/api/vocab/topics", (JsonDatabase db, JsonElement body) =>
 {
     var name = body.TryGetProperty("name", out var n) ? n.GetString() : null;
     var ownerId = body.TryGetProperty("user_id", out var uid) ? uid.GetString() : null;
-    if (string.IsNullOrWhiteSpace(name)) return Results.BadRequest(new { error = "Topic name is required." });
+    if (string.IsNullOrWhiteSpace(name) || name.Trim().Length > 80) return Results.BadRequest(new { error = "Tên chủ đề phải có từ 1 đến 80 ký tự." });
     if (string.IsNullOrWhiteSpace(ownerId) || db.GetUser(ownerId)?.Role != "student") return Results.BadRequest(new { error = "Student account is required." });
-    var topic = new Topic { Id = $"topic-{Guid.NewGuid():N}", Owner_User_Id = ownerId, Name = name.Trim(), Level = body.TryGetProperty("level", out var l) ? l.GetString() ?? "ALL" : "ALL", Created_At = DateTime.UtcNow.ToString("O") };
+    if (db.GetTopicsForUser(ownerId).Any(topic => topic.Name.Equals(name.Trim(), StringComparison.OrdinalIgnoreCase)))
+        return Results.Conflict(new { error = "Tên chủ đề đã tồn tại. Hãy chọn tên khác." });
+    var level = body.TryGetProperty("level", out var l) ? l.GetString()?.Trim().ToUpperInvariant() : null;
+    if (level is null || !new[] { "A1", "A2", "B1", "B2", "C1", "C2" }.Contains(level))
+        return Results.BadRequest(new { error = "Vui lòng chọn cấp CEFR từ A1 đến C2." });
+    var topic = new Topic { Id = $"topic-{Guid.NewGuid():N}", Owner_User_Id = ownerId, Name = name.Trim(), Level = level, Created_At = DateTime.UtcNow.ToString("O") };
     db.AddTopic(topic);
     return Results.Json(new { success = true, topic }, statusCode: 201);
 });

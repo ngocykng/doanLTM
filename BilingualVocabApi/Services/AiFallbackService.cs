@@ -9,20 +9,39 @@ namespace BilingualVocabApi.Services;
 
 public class AiFallbackService
 {
-    private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(60) };
+    private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(30) };
     private readonly IConfiguration _configuration;
 
     public AiFallbackService(IConfiguration configuration) => _configuration = configuration;
 
-    public async Task<List<VocabCard>> GenerateVocabAsync(string topic, string level, string topicId, AiConfig config, CancellationToken cancellationToken = default)
+    public async Task<List<VocabCard>> GenerateVocabAsync(
+        string topic,
+        string level,
+        string topicId,
+        AiConfig config,
+        IEnumerable<string>? excludeWords = null,
+        int batchIndex = 1,
+        int startIndex = 0,
+        CancellationToken cancellationToken = default)
     {
         var apiKey = Environment.GetEnvironmentVariable("GEMINI_API_KEY") ?? _configuration["GEMINI_API_KEY"];
         if (string.IsNullOrWhiteSpace(apiKey)) throw new InvalidOperationException("Chưa cấu hình GEMINI_API_KEY trong file .env.");
 
-        var model = string.IsNullOrWhiteSpace(config.Model_Name) ? "gemini-2.5-flash" : config.Model_Name.Trim();
-        var prompt = $"Tạo đúng 5 flashcard từ vựng tiếng Anh về chủ đề '{topic}', trình độ CEFR {level}. " +
+        var preferredModel = string.IsNullOrWhiteSpace(config.Model_Name)
+            || config.Model_Name.Equals("gemini-2.5-flash", StringComparison.OrdinalIgnoreCase)
+            ? "gemini-3.8-flash"
+            : config.Model_Name.Trim();
+        var models = new[] { preferredModel, "gemini-3.5-flash", "gemini-3.1-flash-lite-preview", "gemini-2.5-flash" }
+            .Where(model => !string.IsNullOrWhiteSpace(model))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var excluded = excludeWords?.Where(word => !string.IsNullOrWhiteSpace(word)).Distinct(StringComparer.OrdinalIgnoreCase).ToList() ?? new();
+        var excludePrompt = excluded.Count == 0
+            ? string.Empty
+            : $" Không được dùng lại các từ đã có: {string.Join(", ", excluded.Take(100))}.";
+        var prompt = $"Tạo đúng 15 flashcard từ vựng tiếng Anh mới về chủ đề '{topic}', trình độ CEFR {level}, cho đợt #{batchIndex}. " +
             "Chỉ trả JSON array, không markdown. Mỗi object có các trường: word_en, ipa_en, meaning_vi, example_en, example_meaning_vi, difficulty. " +
-            "Nghĩa và câu ví dụ phải chính xác, phù hợp trình độ. Không lặp từ.";
+            $"Nghĩa và câu ví dụ phải chính xác, phù hợp trình độ. Không lặp từ.{excludePrompt}";
         var requestBody = JsonSerializer.Serialize(new
         {
             contents = new[] { new { parts = new[] { new { text = prompt } } } },
@@ -33,16 +52,40 @@ public class AiFallbackService
                 maxOutputTokens = Math.Clamp(config.Max_Output_Tokens, 256, 8192)
             }
         });
-        using var request = new HttpRequestMessage(HttpMethod.Post, $"https://generativelanguage.googleapis.com/v1beta/models/{Uri.EscapeDataString(model)}:generateContent");
-        request.Headers.Add("x-goog-api-key", apiKey);
-        request.Content = new StringContent(requestBody, Encoding.UTF8, "application/json");
-        using var response = await Http.SendAsync(request, cancellationToken);
-        var responseText = await response.Content.ReadAsStringAsync(cancellationToken);
-        if (!response.IsSuccessStatusCode)
+        HttpResponseMessage? successResponse = null;
+        string responseText = string.Empty;
+        string? lastError = null;
+        foreach (var model in models)
         {
-            var detail = TryReadApiError(responseText) ?? $"Gemini trả về HTTP {(int)response.StatusCode}.";
-            throw new HttpRequestException(detail, null, response.StatusCode);
+            try
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Post, $"https://generativelanguage.googleapis.com/v1beta/models/{Uri.EscapeDataString(model)}:generateContent");
+                request.Headers.Add("x-goog-api-key", apiKey);
+                request.Content = new StringContent(requestBody, Encoding.UTF8, "application/json");
+                using var response = await Http.SendAsync(request, cancellationToken);
+                responseText = await response.Content.ReadAsStringAsync(cancellationToken);
+                if (response.IsSuccessStatusCode)
+                {
+                    successResponse = new HttpResponseMessage(response.StatusCode);
+                    break;
+                }
+
+                lastError = TryReadApiError(responseText) ?? $"Gemini trả về HTTP {(int)response.StatusCode}.";
+                if ((int)response.StatusCode is 400 or 401 or 403)
+                    break;
+            }
+            catch (TaskCanceledException)
+            {
+                lastError = $"Model Gemini {model} không phản hồi kịp thời.";
+            }
+            catch (HttpRequestException ex)
+            {
+                lastError = $"Không kết nối được Gemini model {model}: {ex.Message}";
+            }
         }
+        if (successResponse is null)
+            throw new HttpRequestException(lastError ?? "Gemini không trả về kết quả.");
+        successResponse.Dispose();
 
         using var document = JsonDocument.Parse(responseText);
         var generatedText = document.RootElement.GetProperty("candidates")[0].GetProperty("content").GetProperty("parts")[0].GetProperty("text").GetString();
@@ -53,7 +96,7 @@ public class AiFallbackService
 
         return generated.Select((card, index) => new VocabCard
         {
-            Id = $"card-{topicId}-{index + 1}",
+            Id = $"card-{topicId}-{startIndex + index + 1}",
             Topic_Id = topicId,
             Word_En = card.Word_En?.Trim() ?? string.Empty,
             Ipa_En = card.Ipa_En,
@@ -62,7 +105,12 @@ public class AiFallbackService
             Example_Meaning_Vi = card.Example_Meaning_Vi?.Trim() ?? string.Empty,
             Difficulty = string.IsNullOrWhiteSpace(card.Difficulty) ? level : card.Difficulty,
             Learned = false
-        }).Where(card => !string.IsNullOrWhiteSpace(card.Word_En) && !string.IsNullOrWhiteSpace(card.Meaning_Vi)).ToList();
+        }).Where(card => !string.IsNullOrWhiteSpace(card.Word_En)
+            && !string.IsNullOrWhiteSpace(card.Meaning_Vi)
+            && !excluded.Contains(card.Word_En, StringComparer.OrdinalIgnoreCase))
+            .GroupBy(card => card.Word_En.Trim(), StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .ToList();
     }
 
     private static string? TryReadApiError(string body)
