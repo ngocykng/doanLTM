@@ -13,10 +13,32 @@ public class ApiClientService
     };
 
     private readonly HttpClient _httpClient;
+    public string? CurrentToken { get; private set; }
+    public string? CurrentUserId { get; private set; }
 
     public ApiClientService()
     {
         _httpClient = new HttpClient { BaseAddress = new Uri("http://localhost:5046/") };
+    }
+
+    public void SetAuthSession(string? token, string? userId)
+    {
+        CurrentToken = token;
+        CurrentUserId = userId;
+        _httpClient.DefaultRequestHeaders.Remove("Authorization");
+        _httpClient.DefaultRequestHeaders.Remove("x-user-id");
+        if (!string.IsNullOrWhiteSpace(token))
+            _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+        if (!string.IsNullOrWhiteSpace(userId))
+            _httpClient.DefaultRequestHeaders.Add("x-user-id", userId);
+    }
+
+    public void ClearAuthSession()
+    {
+        CurrentToken = null;
+        CurrentUserId = null;
+        _httpClient.DefaultRequestHeaders.Remove("Authorization");
+        _httpClient.DefaultRequestHeaders.Remove("x-user-id");
     }
 
     public async Task<LoginResponse?> LoginAsync(string email, string password)
@@ -26,7 +48,12 @@ public class ApiClientService
         var response = await _httpClient.PostAsync("api/auth/login", content);
         if (!response.IsSuccessStatusCode) return null;
         var json = await response.Content.ReadAsStringAsync();
-        return JsonSerializer.Deserialize<LoginResponse>(json, JsonOptions);
+        var result = JsonSerializer.Deserialize<LoginResponse>(json, JsonOptions);
+        if (result?.Success == true && result.User is not null)
+        {
+            SetAuthSession(result.Token, result.User.Id);
+        }
+        return result;
     }
 
     public async Task<LoginResponse?> RegisterAsync(string name, string email, string password)
@@ -36,7 +63,12 @@ public class ApiClientService
         var response = await _httpClient.PostAsync("api/auth/register", content);
         if (!response.IsSuccessStatusCode) return null;
         var json = await response.Content.ReadAsStringAsync();
-        return JsonSerializer.Deserialize<LoginResponse>(json, JsonOptions);
+        var result = JsonSerializer.Deserialize<LoginResponse>(json, JsonOptions);
+        if (result?.Success == true && result.User is not null)
+        {
+            SetAuthSession(result.Token, result.User.Id);
+        }
+        return result;
     }
 
     public async Task<List<TopicDeck>> GetTopicsAsync(string userId)
@@ -125,7 +157,11 @@ public class ApiClientService
     public async Task<bool> MarkCardLearnedAsync(string cardId, string userId)
     {
         using var content = new StringContent("{}", Encoding.UTF8, "application/json");
-        var response = await _httpClient.PostAsync($"api/vocab/cards/{cardId}/toggle-learned?user_id={Uri.EscapeDataString(userId)}", content);
+        var response = await _httpClient.PatchAsync($"api/vocab/cards/{cardId}/learned?user_id={Uri.EscapeDataString(userId)}", content);
+        if (!response.IsSuccessStatusCode)
+        {
+            response = await _httpClient.PostAsync($"api/vocab/cards/{cardId}/toggle-learned?user_id={Uri.EscapeDataString(userId)}", content);
+        }
         return response.IsSuccessStatusCode;
     }
 
@@ -146,53 +182,107 @@ public class ApiClientService
 
     public async Task<List<ApiAssignment>> GetStudentAssignmentsAsync()
     {
-        var json = await _httpClient.GetStringAsync($"api/student/assignments");
+        var json = await _httpClient.GetStringAsync("api/student/assignments");
         var response = JsonSerializer.Deserialize<AssignmentsResponse>(json, JsonOptions);
         return response?.Assignments ?? new List<ApiAssignment>();
     }
 
-    public async Task<List<ApiAssignment>> GetExpertAssignmentsAsync(string expertId)
+    public async Task<List<ApiAssignment>> GetExpertAssignmentsAsync(string? expertId = null)
     {
-        var json = await _httpClient.GetStringAsync($"api/expert/assignments?expert_id={Uri.EscapeDataString(expertId)}");
+        var url = string.IsNullOrWhiteSpace(expertId) ? "api/expert/assignments" : $"api/expert/assignments?expert_id={Uri.EscapeDataString(expertId)}";
+        var json = await _httpClient.GetStringAsync(url);
         return JsonSerializer.Deserialize<AssignmentsResponse>(json, JsonOptions)?.Assignments ?? new();
     }
 
-    public async Task<bool> CreateAssignmentAsync(string expertId, string expertName, string title, string skill, string level, string instructions, string dueDate)
+    public async Task<bool> CreateAssignmentAsync(string title, string skill, string level, int durationMinutes, string contentText, string instructions, string dueDate, double maxScore = 10.0, string? readingQuiz = null)
     {
-        var payload = JsonSerializer.Serialize(new { expert_id = expertId, expert_name = expertName, title, skill, target_level = level, instructions, due_date = dueDate });
+        var payload = JsonSerializer.Serialize(new
+        {
+            title,
+            skill,
+            target_level = level,
+            duration_minutes = durationMinutes,
+            content = contentText,
+            instructions,
+            due_date = dueDate,
+            max_score = maxScore,
+            reading_quiz = readingQuiz
+        });
         using var content = new StringContent(payload, Encoding.UTF8, "application/json");
-        return (await _httpClient.PostAsync("api/expert/assignments", content)).IsSuccessStatusCode;
+        var response = await _httpClient.PostAsync("api/expert/assignments", content);
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<bool> UpdateAssignmentAsync(string id, string title, string skill, string level, int durationMinutes, string contentText, string instructions, string dueDate, double maxScore = 10.0, string? readingQuiz = null)
+    {
+        var payload = JsonSerializer.Serialize(new
+        {
+            title,
+            skill,
+            target_level = level,
+            duration_minutes = durationMinutes,
+            content = contentText,
+            instructions,
+            due_date = dueDate,
+            max_score = maxScore,
+            reading_quiz = readingQuiz
+        });
+        using var content = new StringContent(payload, Encoding.UTF8, "application/json");
+        var response = await _httpClient.PutAsync($"api/expert/assignments/{Uri.EscapeDataString(id)}", content);
+        return response.IsSuccessStatusCode;
     }
 
     public async Task<bool> DeleteAssignmentAsync(string id) => (await _httpClient.DeleteAsync($"api/expert/assignments/{Uri.EscapeDataString(id)}")).IsSuccessStatusCode;
 
-    public async Task<bool> SubmitAssignmentAsync(string assignmentId, string studentId, string studentName, string contentText)
+    public async Task<bool> SubmitAssignmentAsync(string assignmentId, string contentText, string? audioUrl = null, string? readingAnswers = null, string? topicSentence = null, int? durationSpent = null)
     {
-        var payload = JsonSerializer.Serialize(new { student_id = studentId, student_name = studentName, content = contentText });
+        var payload = JsonSerializer.Serialize(new
+        {
+            assignment_id = assignmentId,
+            content = contentText,
+            audio_url = audioUrl,
+            reading_answers = readingAnswers,
+            topic_sentence = topicSentence,
+            duration_spent = durationSpent
+        });
         using var content = new StringContent(payload, Encoding.UTF8, "application/json");
-        var response = await _httpClient.PostAsync($"api/student/assignments/{assignmentId}/submit", content);
+        var response = await _httpClient.PostAsync("api/student/submissions", content);
         return response.IsSuccessStatusCode;
     }
 
-    public async Task<List<ApiSubmission>> GetStudentSubmissionsAsync(string studentId)
+    public async Task<List<ApiSubmission>> GetStudentSubmissionsAsync(string? studentId = null)
     {
-        var json = await _httpClient.GetStringAsync($"api/student/submissions?student_id={Uri.EscapeDataString(studentId)}");
+        var url = string.IsNullOrWhiteSpace(studentId) ? "api/student/submissions" : $"api/student/submissions?student_id={Uri.EscapeDataString(studentId)}";
+        var json = await _httpClient.GetStringAsync(url);
         var response = JsonSerializer.Deserialize<SubmissionsResponse>(json, JsonOptions);
         return response?.Submissions ?? new List<ApiSubmission>();
     }
 
-    public async Task<List<ApiSubmission>> GetExpertSubmissionsAsync()
+    public async Task<List<ApiSubmission>> GetExpertSubmissionsAsync(string? status = null, string? assignmentId = null)
     {
-        var json = await _httpClient.GetStringAsync("api/expert/submissions");
+        var query = new List<string>();
+        if (!string.IsNullOrWhiteSpace(status)) query.Add($"status={Uri.EscapeDataString(status)}");
+        if (!string.IsNullOrWhiteSpace(assignmentId)) query.Add($"assignment_id={Uri.EscapeDataString(assignmentId)}");
+        var url = "api/expert/submissions" + (query.Count > 0 ? "?" + string.Join("&", query) : "");
+
+        var json = await _httpClient.GetStringAsync(url);
         var response = JsonSerializer.Deserialize<SubmissionsResponse>(json, JsonOptions);
         return response?.Submissions ?? new List<ApiSubmission>();
     }
 
-    public async Task<bool> GradeSubmissionAsync(string submissionId, double score, string feedback, string gradedBy, string assessedLevel)
+    public async Task<ApiSubmission?> GetSubmissionDetailAsync(string id)
     {
-        var payload = JsonSerializer.Serialize(new { score, feedback, graded_by = gradedBy, assessed_level = assessedLevel });
+        var json = await _httpClient.GetStringAsync($"api/expert/submissions/{Uri.EscapeDataString(id)}");
+        var response = JsonSerializer.Deserialize<SubmissionDetailResponse>(json, JsonOptions);
+        return response?.Submission;
+    }
+
+    public async Task<bool> GradeSubmissionAsync(string submissionId, double score, string feedback, string assessedLevel)
+    {
+        var payload = JsonSerializer.Serialize(new { score, feedback, assessed_level = assessedLevel });
         using var content = new StringContent(payload, Encoding.UTF8, "application/json");
-        var response = await _httpClient.PostAsync($"api/expert/submissions/{submissionId}/grade", content);
+        // Gọi PUT theo chuẩn tài liệu đặc tả F4.3
+        var response = await _httpClient.PutAsync($"api/expert/submissions/{submissionId}/grade", content);
         return response.IsSuccessStatusCode;
     }
 

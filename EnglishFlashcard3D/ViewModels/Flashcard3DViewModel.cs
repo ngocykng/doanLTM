@@ -1,32 +1,58 @@
 using System.Collections.ObjectModel;
+using System.Windows;
 using System.Windows.Input;
 using EnglishFlashcard3D.Models;
 using EnglishFlashcard3D.Services;
 
 namespace EnglishFlashcard3D.ViewModels;
 
+public enum FlashcardFilterMode
+{
+    All,
+    Unmastered,
+    Mastered
+}
+
 public class Flashcard3DViewModel : BaseViewModel
 {
     private readonly AudioService _audioService;
-    private readonly ObservableCollection<EnglishFlashcard> _cards;
+    private readonly List<EnglishFlashcard> _allCards = new();
+    private readonly ObservableCollection<EnglishFlashcard> _cards = new();
     private int _currentIndex;
     private bool _isFlipped;
+    private FlashcardFilterMode _filterMode = FlashcardFilterMode.All;
+    private string _toastNotification = string.Empty;
+    private string _topicTitle = "Bộ thẻ từ vựng";
+    private string _topicLevel = "B1";
 
     public Flashcard3DViewModel(List<EnglishFlashcard> cards)
     {
         _audioService = new AudioService();
-        _cards = new ObservableCollection<EnglishFlashcard>(cards);
 
         FlipCommand = new RelayCommand(_ => FlipCard(), _ => _cards.Count > 0);
         NextCommand = new RelayCommand(_ => NextCard(), _ => CanNext);
         PrevCommand = new RelayCommand(_ => PrevCard(), _ => CanPrev);
         PronounceCommand = new RelayCommand(_ => SpeakCurrentWord(), _ => CurrentCard is not null);
-        MarkMasteredCommand = new RelayCommand(_ => MarkMastered(), _ => CurrentCard is not null);
+        MarkMasteredCommand = new RelayCommand(_ => ToggleMastered(), _ => CurrentCard is not null);
+        CopyCommand = new RelayCommand(_ => CopyCurrentCard(), _ => CurrentCard is not null);
+        ShuffleCommand = new RelayCommand(_ => ShuffleCards(), _ => _cards.Count > 1);
+        ResetCommand = new RelayCommand(_ => ResetDeck(), _ => _cards.Count > 0);
+
+        FilterAllCommand = new RelayCommand(_ => FilterMode = FlashcardFilterMode.All);
+        FilterUnmasteredCommand = new RelayCommand(_ => FilterMode = FlashcardFilterMode.Unmastered);
+        FilterMasteredCommand = new RelayCommand(_ => FilterMode = FlashcardFilterMode.Mastered);
+
+        SetCards(cards);
     }
 
     public event Action<EnglishFlashcard>? CardMarkedMastered;
+    public event Action<string>? ToastTriggered;
 
-    public EnglishFlashcard? CurrentCard => _cards.Count > 0 && _currentIndex >= 0 && _currentIndex < _cards.Count ? _cards[_currentIndex] : null;
+    public ObservableCollection<EnglishFlashcard> Cards => _cards;
+
+    public EnglishFlashcard? CurrentCard => _cards.Count > 0 && _currentIndex >= 0 && _currentIndex < _cards.Count
+        ? _cards[_currentIndex]
+        : null;
 
     public int CurrentIndex
     {
@@ -49,6 +75,52 @@ public class Flashcard3DViewModel : BaseViewModel
         set => SetField(ref _isFlipped, value);
     }
 
+    public string TopicTitle
+    {
+        get => _topicTitle;
+        set => SetField(ref _topicTitle, value);
+    }
+
+    public string TopicLevel
+    {
+        get => _topicLevel;
+        set => SetField(ref _topicLevel, value);
+    }
+
+    public FlashcardFilterMode FilterMode
+    {
+        get => _filterMode;
+        set
+        {
+            if (!SetField(ref _filterMode, value)) return;
+            ApplyFilter();
+            OnPropertyChanged(nameof(IsFilterAllActive));
+            OnPropertyChanged(nameof(IsFilterUnmasteredActive));
+            OnPropertyChanged(nameof(IsFilterMasteredActive));
+        }
+    }
+
+    public bool IsFilterAllActive => _filterMode == FlashcardFilterMode.All;
+    public bool IsFilterUnmasteredActive => _filterMode == FlashcardFilterMode.Unmastered;
+    public bool IsFilterMasteredActive => _filterMode == FlashcardFilterMode.Mastered;
+
+    public string ToastNotification
+    {
+        get => _toastNotification;
+        set
+        {
+            if (SetField(ref _toastNotification, value) && !string.IsNullOrEmpty(value))
+            {
+                ToastTriggered?.Invoke(value);
+            }
+        }
+    }
+
+    public int TotalCount => _allCards.Count;
+    public int MasteredCount => _allCards.Count(c => c.IsMastered);
+    public int UnmasteredCount => _allCards.Count(c => !c.IsMastered);
+    public double ProgressPercentage => TotalCount > 0 ? (MasteredCount * 100.0) / TotalCount : 0;
+    public string ProgressSummary => $"Đã thuộc: {MasteredCount} / {TotalCount} từ ({ProgressPercentage:0}%)";
     public string ProgressText => _cards.Count == 0 ? "0 / 0" : $"{_currentIndex + 1} / {_cards.Count}";
 
     public bool CanNext => _currentIndex < _cards.Count - 1;
@@ -59,13 +131,38 @@ public class Flashcard3DViewModel : BaseViewModel
     public ICommand PrevCommand { get; }
     public ICommand PronounceCommand { get; }
     public ICommand MarkMasteredCommand { get; }
+    public ICommand CopyCommand { get; }
+    public ICommand ShuffleCommand { get; }
+    public ICommand ResetCommand { get; }
+    public ICommand FilterAllCommand { get; }
+    public ICommand FilterUnmasteredCommand { get; }
+    public ICommand FilterMasteredCommand { get; }
 
-    public void SetCards(List<EnglishFlashcard> cards)
+    public void SetCards(List<EnglishFlashcard> cards, string? topicTitle = null, string? topicLevel = null)
     {
-        _cards.Clear();
-        foreach (var card in cards)
+        if (!string.IsNullOrWhiteSpace(topicTitle)) TopicTitle = topicTitle;
+        if (!string.IsNullOrWhiteSpace(topicLevel)) TopicLevel = topicLevel;
+
+        _allCards.Clear();
+        _allCards.AddRange(cards);
+
+        ApplyFilter();
+        UpdateProgressMetrics();
+    }
+
+    private void ApplyFilter()
+    {
+        var targetCards = _filterMode switch
         {
-            _cards.Add(card);
+            FlashcardFilterMode.Unmastered => _allCards.Where(c => !c.IsMastered).ToList(),
+            FlashcardFilterMode.Mastered => _allCards.Where(c => c.IsMastered).ToList(),
+            _ => _allCards.ToList()
+        };
+
+        _cards.Clear();
+        foreach (var c in targetCards)
+        {
+            _cards.Add(c);
         }
 
         CurrentIndex = 0;
@@ -95,14 +192,75 @@ public class Flashcard3DViewModel : BaseViewModel
         _audioService.SpeakAsync(CurrentCard.Word);
     }
 
-    public void MarkMastered()
+    public void ToggleMastered()
     {
         if (CurrentCard is null) return;
-        CurrentCard.IsMastered = true;
+        CurrentCard.IsMastered = !CurrentCard.IsMastered;
         CurrentCard.ReviewCount += 1;
         CurrentCard.LastReviewedAt = DateTime.Now;
+
+        UpdateProgressMetrics();
         OnPropertyChanged(nameof(CurrentCard));
         CardMarkedMastered?.Invoke(CurrentCard);
+
+        ToastNotification = CurrentCard.IsMastered
+            ? $"✓ Đã thuộc từ: {CurrentCard.Word}"
+            : $"⏳ Đã chuyển sang cần ôn: {CurrentCard.Word}";
+    }
+
+    public void CopyCurrentCard()
+    {
+        if (CurrentCard is null) return;
+        try
+        {
+            var text =
+                $"Word: {CurrentCard.Word}\n" +
+                $"Phonetic: {CurrentCard.Phonetic}\n" +
+                $"Type: {CurrentCard.PartOfSpeech}\n" +
+                $"Meaning: {CurrentCard.MeaningVi}\n" +
+                $"Example: {CurrentCard.ExampleEn}\n" +
+                $"Translation: {CurrentCard.ExampleVi}" +
+                (string.IsNullOrWhiteSpace(CurrentCard.Note) ? "" : $"\nNote: {CurrentCard.Note}");
+
+            Clipboard.SetText(text);
+            ToastNotification = $"📋 Đã sao chép từ '{CurrentCard.Word}' vào Clipboard!";
+        }
+        catch
+        {
+            ToastNotification = "Không thể truy cập Clipboard.";
+        }
+    }
+
+    public void ShuffleCards()
+    {
+        if (_cards.Count <= 1) return;
+        var rng = new Random();
+        int n = _cards.Count;
+        while (n > 1)
+        {
+            n--;
+            int k = rng.Next(n + 1);
+            (_cards[k], _cards[n]) = (_cards[n], _cards[k]);
+        }
+        CurrentIndex = 0;
+        IsFlipped = false;
+        ToastNotification = "🔀 Đã xáo trộn danh sách thẻ!";
+    }
+
+    public void ResetDeck()
+    {
+        CurrentIndex = 0;
+        IsFlipped = false;
+        ToastNotification = "↺ Đã quay lại thẻ đầu tiên.";
+    }
+
+    private void UpdateProgressMetrics()
+    {
+        OnPropertyChanged(nameof(TotalCount));
+        OnPropertyChanged(nameof(MasteredCount));
+        OnPropertyChanged(nameof(UnmasteredCount));
+        OnPropertyChanged(nameof(ProgressPercentage));
+        OnPropertyChanged(nameof(ProgressSummary));
     }
 
     private void RaiseCommandStates()
@@ -112,5 +270,8 @@ public class Flashcard3DViewModel : BaseViewModel
         if (PrevCommand is RelayCommand prev) prev.RaiseCanExecuteChanged();
         if (PronounceCommand is RelayCommand speak) speak.RaiseCanExecuteChanged();
         if (MarkMasteredCommand is RelayCommand master) master.RaiseCanExecuteChanged();
+        if (CopyCommand is RelayCommand copy) copy.RaiseCanExecuteChanged();
+        if (ShuffleCommand is RelayCommand shuffle) shuffle.RaiseCanExecuteChanged();
+        if (ResetCommand is RelayCommand reset) reset.RaiseCanExecuteChanged();
     }
 }

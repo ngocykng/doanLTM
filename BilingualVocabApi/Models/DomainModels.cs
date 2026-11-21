@@ -53,14 +53,17 @@ public class Assignment
     public string Expert_Id { get; set; } = string.Empty;
     public string Expert_Name { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
-    public string Skill { get; set; } = "writing";
-    public string Target_Level { get; set; } = "B2";
+    public string Skill { get; set; } = "writing"; // writing, speaking, listening, reading
+    public string Target_Level { get; set; } = "B2"; // A1 - C2
+    public int Duration_Minutes { get; set; } = 45; // Thời gian làm bài (phút)
     public string Department_Category { get; set; } = string.Empty;
+    public string Content { get; set; } = string.Empty; // Nội dung đề bài / bài đọc
     public string Instructions { get; set; } = string.Empty;
     public string? Reference_Media_Url { get; set; }
     public string? Due_Date { get; set; }
     public string Created_At { get; set; } = DateTime.UtcNow.ToString("O");
-    public int Max_Score { get; set; } = 100;
+    public double Max_Score { get; set; } = 10.0; // Thang điểm mặc định 0-10
+    public string? Reading_Quiz { get; set; } // JSON câu hỏi trắc nghiệm nếu là reading
     public int Submission_Count { get; set; }
 }
 
@@ -75,14 +78,70 @@ public class Submission
     public string? Student_Code { get; set; }
     public string? Student_Department { get; set; }
     public string Content { get; set; } = string.Empty;
-    public string? Audio_Url { get; set; }
+    public string? Audio_Url { get; set; } // Link ghi âm / ghi chú vấn đáp 1-1
+    public string? Reading_Answers { get; set; } // JSON lưu đáp án trắc nghiệm
+    public double? Reading_Auto_Score { get; set; } // Điểm trắc nghiệm tự động chấm
+    public string? Topic_Sentence { get; set; } // Phần đặt câu chủ đề (giảng viên chấm)
+    public int? Duration_Spent { get; set; } // Thời gian sinh viên làm bài (phút)
     public string Submitted_At { get; set; } = DateTime.UtcNow.ToString("O");
-    public string Status { get; set; } = "pending";
-    public double? Score { get; set; }
+    public string Status { get; set; } = "pending"; // pending, graded
+    public double? Score { get; set; } // Điểm số thang 0-10
     public string? Feedback { get; set; }
     public string? Graded_By { get; set; }
     public string? Graded_At { get; set; }
-    public string? Assessed_Level { get; set; }
+    public string? Assessed_Level { get; set; } // CEFR A1 - C2
+}
+
+public class ReadingQuizQuestion
+{
+    public int Id { get; set; }
+    public string Question { get; set; } = string.Empty;
+    public List<string> Options { get; set; } = new();
+    public string Correct_Answer { get; set; } = string.Empty;
+}
+
+public class AssignmentCreateDto
+{
+    public string Title { get; set; } = string.Empty;
+    public string Skill { get; set; } = "writing";
+    public string Target_Level { get; set; } = "B2";
+    public int Duration_Minutes { get; set; } = 45;
+    public string Content { get; set; } = string.Empty;
+    public string Instructions { get; set; } = string.Empty;
+    public string? Due_Date { get; set; }
+    public double Max_Score { get; set; } = 10.0;
+    public string? Reading_Quiz { get; set; }
+}
+
+public class AssignmentUpdateDto
+{
+    public string? Title { get; set; }
+    public string? Skill { get; set; }
+    public string? Target_Level { get; set; }
+    public int? Duration_Minutes { get; set; }
+    public string? Content { get; set; }
+    public string? Instructions { get; set; }
+    public string? Due_Date { get; set; }
+    public double? Max_Score { get; set; }
+    public string? Reading_Quiz { get; set; }
+}
+
+public class SubmissionCreateDto
+{
+    public string Assignment_Id { get; set; } = string.Empty;
+    public string Content { get; set; } = string.Empty;
+    public string? Audio_Url { get; set; }
+    public string? Reading_Answers { get; set; }
+    public string? Topic_Sentence { get; set; }
+    public int? Duration_Spent { get; set; }
+}
+
+public class GradeDto
+{
+    public double Score { get; set; } // 0 - 10
+    public string Feedback { get; set; } = string.Empty;
+    public string Assessed_Level { get; set; } = "B2"; // A1 - C2
+    public string? Graded_By { get; set; }
 }
 
 public class Consultation
