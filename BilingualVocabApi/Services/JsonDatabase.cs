@@ -245,6 +245,25 @@ public class JsonDatabase
 
     public Assignment? GetAssignment(string id) => _data.Assignments.FirstOrDefault(a => a.Id == id);
     public Assignment AddAssignment(Assignment assignment) { lock (_sync) { _data.Assignments.Insert(0, assignment); Save(); return assignment; } }
+    public Assignment? UpdateAssignment(string id, AssignmentUpdateDto updates)
+    {
+        lock (_sync)
+        {
+            var a = _data.Assignments.FirstOrDefault(x => x.Id == id);
+            if (a is null) return null;
+            if (!string.IsNullOrWhiteSpace(updates.Title)) a.Title = updates.Title.Trim();
+            if (!string.IsNullOrWhiteSpace(updates.Skill)) a.Skill = updates.Skill.Trim().ToLowerInvariant();
+            if (!string.IsNullOrWhiteSpace(updates.Target_Level)) a.Target_Level = updates.Target_Level.Trim();
+            if (updates.Duration_Minutes.HasValue && updates.Duration_Minutes.Value > 0) a.Duration_Minutes = updates.Duration_Minutes.Value;
+            if (updates.Content is not null) a.Content = updates.Content.Trim();
+            if (updates.Instructions is not null) a.Instructions = updates.Instructions.Trim();
+            if (updates.Due_Date is not null) a.Due_Date = updates.Due_Date.Trim();
+            if (updates.Max_Score.HasValue && updates.Max_Score.Value > 0) a.Max_Score = updates.Max_Score.Value;
+            if (updates.Reading_Quiz is not null) a.Reading_Quiz = updates.Reading_Quiz;
+            Save();
+            return a;
+        }
+    }
     public bool DeleteAssignment(string id) { lock (_sync) { var c = _data.Assignments.RemoveAll(a => a.Id == id); Save(); return c > 0; } }
 
     public List<Submission> GetSubmissions(string? studentId = null, string? assignmentId = null, string? status = null)
@@ -256,19 +275,58 @@ public class JsonDatabase
         return list.ToList();
     }
 
-    public Submission AddSubmission(Submission submission) { lock (_sync) { _data.Submissions.Insert(0, submission); Save(); return submission; } }
+    public Submission? GetSubmission(string id) => _data.Submissions.FirstOrDefault(s => s.Id == id);
+
+    public Submission AddSubmission(Submission submission)
+    {
+        lock (_sync)
+        {
+            // Tự động chấm phần trắc nghiệm nếu là bài Reading và có câu hỏi trắc nghiệm
+            if (submission.Skill.Equals("reading", StringComparison.OrdinalIgnoreCase))
+            {
+                var assign = GetAssignment(submission.Assignment_Id);
+                if (assign is not null && !string.IsNullOrWhiteSpace(assign.Reading_Quiz) && !string.IsNullOrWhiteSpace(submission.Reading_Answers))
+                {
+                    try
+                    {
+                        var questions = JsonSerializer.Deserialize<List<ReadingQuizQuestion>>(assign.Reading_Quiz, _jsonOptions);
+                        var answers = JsonSerializer.Deserialize<Dictionary<string, string>>(submission.Reading_Answers, _jsonOptions);
+                        if (questions is not null && questions.Count > 0 && answers is not null)
+                        {
+                            int correct = 0;
+                            foreach (var q in questions)
+                            {
+                                if (answers.TryGetValue(q.Id.ToString(), out var ans) && ans.Trim().Equals(q.Correct_Answer.Trim(), StringComparison.OrdinalIgnoreCase))
+                                {
+                                    correct++;
+                                }
+                            }
+                            // Thang điểm trắc nghiệm tối đa là 5.0 (50%), 5.0 còn lại dành cho câu chủ đề do Expert chấm
+                            submission.Reading_Auto_Score = Math.Round((double)correct / questions.Count * 5.0, 1);
+                        }
+                    }
+                    catch { }
+                }
+            }
+
+            _data.Submissions.Insert(0, submission);
+            Save();
+            return submission;
+        }
+    }
+
     public Submission? GradeSubmission(string id, double score, string feedback, string gradedBy, string? assessedLevel)
     {
         lock (_sync)
         {
             var s = _data.Submissions.FirstOrDefault(x => x.Id == id);
             if (s is null) return null;
-            s.Score = score;
+            s.Score = Math.Clamp(score, 0.0, 10.0);
             s.Feedback = feedback;
             s.Graded_By = gradedBy;
             s.Graded_At = DateTime.UtcNow.ToString("O");
             s.Status = "graded";
-            s.Assessed_Level = assessedLevel;
+            s.Assessed_Level = assessedLevel ?? "B2";
             Save();
             return s;
         }
