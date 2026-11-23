@@ -75,13 +75,14 @@ public class ApiClientService
     {
         var json = await _httpClient.GetStringAsync($"api/vocab/topics?user_id={Uri.EscapeDataString(userId)}");
         var response = JsonSerializer.Deserialize<TopicsResponse>(json, JsonOptions);
-        if (response is null) return new List<TopicDeck>();
+        if (response is null) throw new JsonException("API không trả về danh sách chủ đề hợp lệ.");
 
         return response.Topics.Select(t => new TopicDeck
         {
             Id = t.Id,
             Name = t.Name,
-            Level = t.Level
+            Level = t.Level,
+            CardCount = t.CardCount
         }).ToList();
     }
 
@@ -109,13 +110,34 @@ public class ApiClientService
         {
             Id = model.Topic.Id,
             Name = model.Topic.Name,
-            Level = model.Topic.Level
+            Level = model.Topic.Level,
+            CardCount = model.Topic.CardCount
         };
+    }
+
+    public async Task<GenerateBatchResponse> GenerateBatchAsync(string topicId, string userId)
+    {
+        var payload = JsonSerializer.Serialize(new { topic_id = topicId, user_id = userId });
+        using var content = new StringContent(payload, Encoding.UTF8, "application/json");
+        var response = await _httpClient.PostAsync("api/vocab/generate-batch", content);
+        var json = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode)
+            throw new HttpRequestException(ReadErrorMessage(json, $"API trả về HTTP {(int)response.StatusCode}."));
+
+        return JsonSerializer.Deserialize<GenerateBatchResponse>(json, JsonOptions)
+            ?? throw new JsonException("API không trả về kết quả sinh từ hợp lệ.");
+    }
+
+    public async Task<bool> DeleteTopicAsync(string topicId, string userId)
+    {
+        var response = await _httpClient.DeleteAsync(
+            $"api/vocab/{Uri.EscapeDataString(topicId)}?user_id={Uri.EscapeDataString(userId)}");
+        return response.IsSuccessStatusCode;
     }
 
     public async Task<List<EnglishFlashcard>> GetTopicCardsAsync(string topicId, string userId)
     {
-        var json = await _httpClient.GetStringAsync($"api/vocab/{topicId}?user_id={Uri.EscapeDataString(userId)}");
+        var json = await _httpClient.GetStringAsync($"api/vocab/{Uri.EscapeDataString(topicId)}?user_id={Uri.EscapeDataString(userId)}");
         var response = JsonSerializer.Deserialize<TopicCardsResponse>(json, JsonOptions);
         if (response is null) return new List<EnglishFlashcard>();
 
@@ -142,6 +164,22 @@ public class ApiClientService
         }
         return response.IsSuccessStatusCode;
     }
+
+    private static string ReadErrorMessage(string json, string fallback)
+    {
+        try
+        {
+            using var error = JsonDocument.Parse(json);
+            return error.RootElement.TryGetProperty("error", out var detail)
+                ? detail.GetString() ?? fallback
+                : fallback;
+        }
+        catch (JsonException)
+        {
+            return fallback;
+        }
+    }
+
     public async Task<List<ApiAssignment>> GetStudentAssignmentsAsync()
     {
         var json = await _httpClient.GetStringAsync("api/student/assignments");
