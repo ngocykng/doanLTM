@@ -499,7 +499,6 @@ public class MainViewModel : BaseViewModel
         if (OpenTopicCommand is RelayCommand open) open.RaiseCanExecuteChanged();
         if (GenerateBatchCommand is RelayCommand batch) batch.RaiseCanExecuteChanged();
         if (DeleteTopicCommand is RelayCommand deleteTopic) deleteTopic.RaiseCanExecuteChanged();
-        foreach (var command in new[] { RefreshF4Command, CreateAssignmentCommand, DeleteAssignmentCommand, SubmitWorkCommand, GradeWorkCommand, RefreshAdminCommand, SyncMysqlCommand, SaveUserCommand, SaveAiConfigCommand, AddCurriculumCommand, DeleteCurriculumCommand })
         foreach (var command in new[]
         {
             RefreshF4Command, CreateAssignmentCommand, UpdateAssignmentCommand, DeleteAssignmentCommand,
