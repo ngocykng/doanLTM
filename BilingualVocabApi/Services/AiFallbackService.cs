@@ -163,6 +163,386 @@ public class AiFallbackService
         }).ToList();
     }
 
+    public async Task<ExamStructure> GenerateExamAsync(
+        User student,
+        List<Topic> topics,
+        List<VocabCard> cards,
+        ExamGenerationRequestDto req,
+        AiConfig config,
+        CancellationToken cancellationToken = default)
+    {
+        var topicNames = topics.Count > 0 ? string.Join(", ", topics.Select(t => t.Name)) : "General English";
+        var cardWords = cards.Take(25).Select(c => $"{c.Word_En} ({c.Meaning_Vi})").ToList();
+        var cardContext = cardWords.Count > 0 ? string.Join("; ", cardWords) : "sustainable, architecture, environment, heritage, construction, innovation";
+
+        var apiKey = Environment.GetEnvironmentVariable("GEMINI_API_KEY") ?? _configuration["GEMINI_API_KEY"];
+        if (!string.IsNullOrWhiteSpace(apiKey))
+        {
+            try
+            {
+                var preferredModel = string.IsNullOrWhiteSpace(config.Model_Name)
+                    || config.Model_Name.Equals("gemini-2.5-flash", StringComparison.OrdinalIgnoreCase)
+                    ? "gemini-3.8-flash"
+                    : config.Model_Name.Trim();
+
+                var prompt = $@"Bạn là chuyên gia khảo thí tiếng Anh đại học. Hãy tạo đề thi khảo thí tiếng Anh chuẩn khung CEFR {req.Cefr_Level} cho sinh viên '{student.Name}'.
+Chủ đề bài thi: '{topicNames}'.
+Từ vựng ưu tiên sử dụng từ các thẻ học: {cardContext}.
+
+Yêu cầu cấu trúc đề thi đúng theo mẫu khảo thí:
+- Khung phách tiêu đề: 'THÍ SINH KHÔNG ĐƯỢC VIẾT GÌ VÀO PHÁCH NÀY'
+- Tiêu đề đề thi: 'BÀI KIỂM TRA ĐÁNH GIÁ NĂNG LỰC TIẾNG ANH (THEO CHỦ ĐỀ)'
+- Đánh số câu hỏi liên tục từ câu 1 xuyên suốt toàn bộ đề thi.
+{(req.Include_Signs ? $"- Phần Warnings - Caution signs: {req.Signs_Count} câu (tổng {req.Signs_Points} điểm). Mỗi câu có mô tả/ký hiệu biển báo, câu hỏi 'What does the sign say?' hoặc tương tự, 4 phương án A, B, C, D và 1 đáp án đúng." : "")}
+{(req.Include_Vocabulary ? $"- Phần Vocabulary Multiple Choice: {req.Vocabulary_Count} câu (tổng {req.Vocabulary_Points} điểm). Các câu đơn chọn từ đúng lấy từ chủ đề, 4 phương án A, B, C, D." : "")}
+{(req.Include_Cloze ? $"- Phần Cloze Test: đoạn văn có {req.Cloze_Count} chỗ trống đánh số liên tục (tổng {req.Cloze_Points} điểm). Đoạn văn theo chủ đề '{topicNames}'. Mỗi chỗ trống có 4 phương án A, B, C, D." : "")}
+{(req.Include_Word_Ordering ? $"- Phần Word Ordering (Sắp xếp từ thành câu): {req.Word_Ordering_Count} câu (tổng {req.Word_Ordering_Points} điểm). Mỗi câu gồm các từ/cụm từ bị xáo trộn (scrambled_words) lấy từ chủ đề; correct_answer là câu hoàn chỉnh." : "")}
+
+Trả về DUY NHẤT một JSON object (không dùng markdown backticks ```) tuân theo schema sau:
+{{
+  ""header_notice"": ""THÍ SINH KHÔNG ĐƯỢC VIẾT GÌ VÀO PHÁCH NÀY"",
+  ""exam_title"": ""BÀI KIỂM TRA ĐÁNH GIÁ NĂNG LỰC TIẾNG ANH"",
+  ""student_name"": ""{student.Name}"",
+  ""student_id"": ""{student.Student_Id ?? student.Id}"",
+  ""duration_minutes"": {req.Duration_Minutes},
+  ""total_score"": 10.0,
+  ""sections"": [
+    {{
+      ""section_id"": ""sec-1"",
+      ""section_number"": ""I"",
+      ""section_type"": ""warnings"",
+      ""title"": ""I. WARNINGS – CAUTION SIGNS ({req.Signs_Points}pt)"",
+      ""instructions"": ""Choose the best option (A, B, C or D) that best fits each sign."",
+      ""points"": {req.Signs_Points},
+      ""passage"": null,
+      ""questions"": [
+        {{
+          ""question_number"": 1,
+          ""question_text"": ""What does the sign say?"",
+          ""sign_type"": ""NO_PARKING_TRUCKS"",
+          ""sign_icon"": ""🚫🚛 [NO TRUCKS]"",
+          ""options"": [""A. The truck can stop."", ""B. The truck can drive."", ""C. The truck can't drive."", ""D. The truck can't park here.""],
+          ""correct_answer"": ""D"",
+          ""scrambled_words"": null,
+          ""explanation"": ""Biển báo cấm xe tải đỗ."",
+          ""points"": 0.25
+        }}
+      ]
+    }}
+  ]
+}}";
+
+                var requestBody = JsonSerializer.Serialize(new
+                {
+                    contents = new[] { new { parts = new[] { new { text = prompt } } } },
+                    generationConfig = new
+                    {
+                        responseMimeType = "application/json",
+                        temperature = Math.Clamp(config.Temperature, 0.1, 1.0),
+                        maxOutputTokens = Math.Clamp(config.Max_Output_Tokens, 1024, 8192)
+                    }
+                });
+
+                using var request = new HttpRequestMessage(HttpMethod.Post, $"https://generativelanguage.googleapis.com/v1beta/models/{Uri.EscapeDataString(preferredModel)}:generateContent");
+                request.Headers.Add("x-goog-api-key", apiKey);
+                request.Content = new StringContent(requestBody, Encoding.UTF8, "application/json");
+                using var response = await Http.SendAsync(request, cancellationToken);
+                if (response.IsSuccessStatusCode)
+                {
+                    var responseText = await response.Content.ReadAsStringAsync(cancellationToken);
+                    using var document = JsonDocument.Parse(responseText);
+                    var generatedText = document.RootElement.GetProperty("candidates")[0].GetProperty("content").GetProperty("parts")[0].GetProperty("text").GetString();
+                    if (!string.IsNullOrWhiteSpace(generatedText))
+                    {
+                        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true, PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
+                        var parsed = JsonSerializer.Deserialize<ExamStructure>(generatedText, options);
+                        if (parsed is not null && parsed.Sections.Count > 0)
+                        {
+                            parsed.Student_Name = student.Name;
+                            parsed.Student_Id = student.Student_Id ?? student.Id;
+                            parsed.Duration_Minutes = req.Duration_Minutes;
+                            return NormalizeExamStructure(parsed, req);
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // Fallback to high quality deterministic exam generator
+            }
+        }
+
+        return GenerateFallbackExam(student, topics, cards, req);
+    }
+
+    private static ExamStructure NormalizeExamStructure(ExamStructure exam, ExamGenerationRequestDto req)
+    {
+        exam.Header_Notice = "THÍ SINH KHÔNG ĐƯỢC VIẾT GÌ VÀO PHÁCH NÀY";
+        int qNum = 1;
+        double calculatedTotal = 0;
+        foreach (var sec in exam.Sections)
+        {
+            if (sec.Questions.Count > 0)
+            {
+                double qPts = Math.Round(sec.Points / sec.Questions.Count, 2);
+                foreach (var q in sec.Questions)
+                {
+                    q.Question_Number = qNum++;
+                    q.Points = qPts;
+                }
+            }
+            calculatedTotal += sec.Points;
+        }
+        exam.Total_Score = Math.Round(calculatedTotal, 1);
+        if (exam.Total_Score <= 0) exam.Total_Score = 10.0;
+        return exam;
+    }
+
+    public ExamStructure GenerateFallbackExam(
+        User student,
+        List<Topic> topics,
+        List<VocabCard> cards,
+        ExamGenerationRequestDto req)
+    {
+        var topicTitle = topics.Count > 0 ? topics[0].Name : "Kiến trúc & Môi trường";
+        var exam = new ExamStructure
+        {
+            Header_Notice = "THÍ SINH KHÔNG ĐƯỢC VIẾT GÌ VÀO PHÁCH NÀY",
+            Exam_Title = $"BÀI THI KHẢO THÍ TIẾNG ANH - CHỦ ĐỀ: {topicTitle.ToUpperInvariant()}",
+            Student_Name = student.Name,
+            Student_Id = student.Student_Id ?? student.Id,
+            Duration_Minutes = req.Duration_Minutes > 0 ? req.Duration_Minutes : 45,
+            Total_Score = 10.0,
+            Sections = new List<ExamSection>()
+        };
+
+        int qCounter = 1;
+        int sectionIndex = 1;
+        string[] romanNumerals = { "I", "II", "III", "IV", "V", "VI" };
+
+        // 1. WARNINGS - CAUTION SIGNS
+        if (req.Include_Signs && req.Signs_Count > 0)
+        {
+            var signsSec = new ExamSection
+            {
+                Section_Id = $"sec-{sectionIndex}",
+                Section_Number = romanNumerals[sectionIndex - 1],
+                Section_Type = "warnings",
+                Title = $"{romanNumerals[sectionIndex - 1]}. WARNINGS – CAUTION SIGNS ({req.Signs_Points:F1}pt)",
+                Instructions = "Look at the sign. What does it say? Choose the best option (A, B, C or D).",
+                Points = req.Signs_Points,
+                Questions = new List<ExamQuestion>()
+            };
+
+            var signBank = new[]
+            {
+                (
+                    "🚫🚛", "NO_PARKING_TRUCKS", "What does the sign say?",
+                    new List<string> { "A. The truck can stop.", "B. The truck can drive.", "C. The truck can't drive.", "D. The truck can't park here." },
+                    "D", "Biển báo cấm xe tải đỗ trong khu vực này."
+                ),
+                (
+                    "🚯", "NO_LITTERING", "What does the sign warn us?",
+                    new List<string> { "A. You aren't allowed to litter here.", "B. There is a waste basket here.", "C. You must litter here.", "D. Put the litter in the garbage bin here." },
+                    "A", "Biển báo cấm vứt rác bừa bãi."
+                ),
+                (
+                    "⚠️", "CAUTION_WET_FLOOR", "What does this caution sign mean?",
+                    new List<string> { "A. You can run quickly across the room.", "B. Be careful because the floor is slippery.", "C. The floor is being washed with hot water.", "D. Remove shoes before entering." },
+                    "B", "Cảnh báo sàn nhà đang trơn trượt, hãy đi cẩn thận."
+                ),
+                (
+                    "🦺", "SAFETY_HELMET_REQUIRED", "What must workers do when seeing this sign?",
+                    new List<string> { "A. Wear protective helmets and safety gear.", "B. Leave all tools outside.", "C. Visitors may enter without supervision.", "D. Work without protective shoes." },
+                    "A", "Bắt buộc đội mũ và trang bị đồ bảo hộ lao động."
+                )
+            };
+
+            int count = Math.Min(req.Signs_Count, signBank.Length);
+            double ptsPerQ = Math.Round(req.Signs_Points / count, 2);
+            for (int i = 0; i < count; i++)
+            {
+                var item = signBank[i];
+                signsSec.Questions.Add(new ExamQuestion
+                {
+                    Question_Number = qCounter++,
+                    Question_Text = item.Item3,
+                    Sign_Type = item.Item2,
+                    Sign_Icon = item.Item1,
+                    Options = item.Item4,
+                    Correct_Answer = item.Item5,
+                    Explanation = item.Item6,
+                    Points = ptsPerQ
+                });
+            }
+            exam.Sections.Add(signsSec);
+            sectionIndex++;
+        }
+
+        // 2. VOCABULARY MULTIPLE CHOICE
+        if (req.Include_Vocabulary && req.Vocabulary_Count > 0)
+        {
+            var vocabSec = new ExamSection
+            {
+                Section_Id = $"sec-{sectionIndex}",
+                Section_Number = romanNumerals[sectionIndex - 1],
+                Section_Type = "vocabulary",
+                Title = $"{romanNumerals[sectionIndex - 1]}. VOCABULARY MULTIPLE CHOICE ({req.Vocabulary_Points:F1}pt)",
+                Instructions = "Choose the word or phrase (A, B, C or D) that best completes each sentence.",
+                Points = req.Vocabulary_Points,
+                Questions = new List<ExamQuestion>()
+            };
+
+            var vocabItems = cards.Where(c => !string.IsNullOrWhiteSpace(c.Word_En)).Take(req.Vocabulary_Count).ToList();
+            if (vocabItems.Count == 0)
+            {
+                vocabItems = new List<VocabCard>
+                {
+                    new() { Word_En = "sustainable", Meaning_Vi = "bền vững", Example_En = "Modern builders use sustainable materials." },
+                    new() { Word_En = "resilience", Meaning_Vi = "sự kiên cường / độ đàn hồi", Example_En = "Urban infrastructure requires structural resilience." },
+                    new() { Word_En = "enhance", Meaning_Vi = "nâng cao", Example_En = "Good insulation will enhance energy efficiency." },
+                    new() { Word_En = "innovative", Meaning_Vi = "đổi mới / sáng tạo", Example_En = "Architects design innovative public spaces." }
+                };
+            }
+
+            int count = Math.Min(req.Vocabulary_Count, vocabItems.Count);
+            double ptsPerQ = Math.Round(req.Vocabulary_Points / count, 2);
+
+            var distractors = new[] { "traditional", "temporary", "expensive", "fragile", "complicated", "dangerous" };
+            for (int i = 0; i < count; i++)
+            {
+                var card = vocabItems[i];
+                var sentence = !string.IsNullOrWhiteSpace(card.Example_En) && card.Example_En.Contains(card.Word_En, StringComparison.OrdinalIgnoreCase)
+                    ? Regex.Replace(card.Example_En, Regex.Escape(card.Word_En), "_______", RegexOptions.IgnoreCase)
+                    : $"The engineer emphasized the importance of _______ design in {topicTitle}.";
+
+                var opts = new List<string>
+                {
+                    $"A. {card.Word_En}",
+                    $"B. {distractors[i % distractors.Length]}",
+                    $"C. {distractors[(i + 1) % distractors.Length]}",
+                    $"D. {distractors[(i + 2) % distractors.Length]}"
+                };
+
+                vocabSec.Questions.Add(new ExamQuestion
+                {
+                    Question_Number = qCounter++,
+                    Question_Text = sentence,
+                    Options = opts,
+                    Correct_Answer = "A",
+                    Explanation = $"Từ '{card.Word_En}' có nghĩa là: {card.Meaning_Vi}.",
+                    Points = ptsPerQ
+                });
+            }
+            exam.Sections.Add(vocabSec);
+            sectionIndex++;
+        }
+
+        // 3. CLOZE TEST
+        if (req.Include_Cloze && req.Cloze_Count > 0)
+        {
+            var clozeSec = new ExamSection
+            {
+                Section_Id = $"sec-{sectionIndex}",
+                Section_Number = romanNumerals[sectionIndex - 1],
+                Section_Type = "cloze",
+                Title = $"{romanNumerals[sectionIndex - 1]}. CLOZE TEST ({req.Cloze_Points:F1}pts)",
+                Instructions = "Choose the word or phrase (A, B, C or D) that best fits each space in the following passage.",
+                Points = req.Cloze_Points,
+                Questions = new List<ExamQuestion>()
+            };
+
+            int startBlank = qCounter;
+            clozeSec.Passage = $"Hue Citadel is one of the most famous ({startBlank}) ________ in Vietnam. There are many historical citadels in Vietnam, but now only a few remain preserved. A citadel is similar ({startBlank + 1}) ________ a royal castle. Citadels were homes for Kings and Queens. Hue Citadel was the home of many Kings and ({startBlank + 2}) ________ families. It was built in the 19th century and was mainly constructed from wood and bricks. The walls were made from strong stone bricks to keep the royal family safe. It doesn't have ({startBlank + 3}) ________ dungeons, but there is an impressive moat surrounding it. Today, architects use ({startBlank + 4}) ________ techniques to protect historical heritage while maintaining structural integrity. Every year, thousands of international visitors ({startBlank + 5}) ________ the Citadel and admire its majestic royal palaces.";
+
+            var clozeData = new[]
+            {
+                (new List<string> { "A. buildings", "B. homes", "C. citadels", "D. shopping malls" }, "C", "Hue Citadel là một trong những thành trì (citadels) nổi tiếng."),
+                (new List<string> { "A. in", "B. on", "C. to", "D. with" }, "C", "Cấu trúc: 'similar to' (tương tự như)."),
+                (new List<string> { "A. Kings'", "B. theirs", "C. their", "D. both A & C" }, "C", "Tính từ sở hữu: 'their families'."),
+                (new List<string> { "A. some", "B. any", "C. few", "D. a little" }, "B", "Câu phủ định: 'doesn't have any dungeons'."),
+                (new List<string> { "A. sustainable", "B. destructive", "C. fragile", "D. polluted" }, "A", "Kỹ thuật bền vững (sustainable techniques)."),
+                (new List<string> { "A. visits", "B. visiting", "C. visited", "D. visit" }, "D", "Chủ ngữ số nhiều 'thousands of people' đi với động từ nguyên mẫu 'visit'.")
+            };
+
+            int count = Math.Min(req.Cloze_Count, clozeData.Length);
+            double ptsPerQ = Math.Round(req.Cloze_Points / count, 2);
+
+            for (int i = 0; i < count; i++)
+            {
+                var item = clozeData[i];
+                clozeSec.Questions.Add(new ExamQuestion
+                {
+                    Question_Number = qCounter++,
+                    Question_Text = $"Choose the best word for space ({startBlank + i}):",
+                    Options = item.Item1,
+                    Correct_Answer = item.Item2,
+                    Explanation = item.Item3,
+                    Points = ptsPerQ
+                });
+            }
+            exam.Sections.Add(clozeSec);
+            sectionIndex++;
+        }
+
+        // 4. WORD ORDERING
+        if (req.Include_Word_Ordering && req.Word_Ordering_Count > 0)
+        {
+            var wordSec = new ExamSection
+            {
+                Section_Id = $"sec-{sectionIndex}",
+                Section_Number = romanNumerals[sectionIndex - 1],
+                Section_Type = "word_ordering",
+                Title = $"{romanNumerals[sectionIndex - 1]}. WORD ORDERING ({req.Word_Ordering_Points:F1}pt)",
+                Instructions = "Rearrange the given words or phrases into a complete, meaningful and grammatically correct sentence.",
+                Points = req.Word_Ordering_Points,
+                Questions = new List<ExamQuestion>()
+            };
+
+            var orderingBank = new[]
+            {
+                (
+                    new List<string> { "was built", "The ancient citadel", "with", "sustainable bricks.", "strong and" },
+                    "The ancient citadel was built with strong and sustainable bricks.",
+                    "Sắp xếp thành câu hoàn chỉnh đúng ngữ pháp tiếng Anh."
+                ),
+                (
+                    new List<string> { "to preserve", "Modern architects", "heritage structures.", "work meticulously", "valuable" },
+                    "Modern architects work meticulously to preserve valuable heritage structures.",
+                    "Sắp xếp thành câu: Chủ ngữ + trạng từ/động từ + mục đích."
+                ),
+                (
+                    new List<string> { "help enhance", "Green construction materials", "energy efficiency", "in urban buildings." },
+                    "Green construction materials help enhance energy efficiency in urban buildings.",
+                    "Sắp xếp thành câu khẳng định hoàn chỉnh."
+                )
+            };
+
+            int count = Math.Min(req.Word_Ordering_Count, orderingBank.Length);
+            double ptsPerQ = Math.Round(req.Word_Ordering_Points / count, 2);
+
+            for (int i = 0; i < count; i++)
+            {
+                var item = orderingBank[i];
+                wordSec.Questions.Add(new ExamQuestion
+                {
+                    Question_Number = qCounter++,
+                    Question_Text = "Rearrange the words to form a correct sentence:",
+                    Scrambled_Words = item.Item1,
+                    Correct_Answer = item.Item2,
+                    Explanation = item.Item3,
+                    Points = ptsPerQ
+                });
+            }
+            exam.Sections.Add(wordSec);
+            sectionIndex++;
+        }
+
+        double totalSum = exam.Sections.Sum(s => s.Points);
+        exam.Total_Score = Math.Round(totalSum, 1);
+        return exam;
+    }
+
     public VocabCard AutoFill(string input)
     {
         return new VocabCard

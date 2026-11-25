@@ -169,6 +169,222 @@ public class ApiAssignment
 
     [JsonPropertyName("submission_count")]
     public int Submission_Count { get; set; }
+
+    [JsonPropertyName("target_student_id")]
+    public string? Target_Student_Id { get; set; }
+
+    [JsonPropertyName("target_student_name")]
+    public string? Target_Student_Name { get; set; }
+
+    [JsonPropertyName("topic_ids")]
+    public List<string> Topic_Ids { get; set; } = new();
+
+    [JsonPropertyName("topic_names")]
+    public List<string> Topic_Names { get; set; } = new();
+
+    [JsonPropertyName("status")]
+    public string Status { get; set; } = "draft"; // draft, published
+
+    [JsonPropertyName("show_answers")]
+    public bool Show_Answers { get; set; } = false;
+
+    [JsonPropertyName("exam_structure")]
+    public ApiExamStructure? Exam_Structure { get; set; }
+}
+
+public class ApiExamStructure
+{
+    [JsonPropertyName("header_notice")]
+    public string Header_Notice { get; set; } = "THÍ SINH KHÔNG ĐƯỢC VIẾT GÌ VÀO PHÁCH NÀY";
+
+    [JsonPropertyName("exam_title")]
+    public string Exam_Title { get; set; } = "BÀI KIỂM TRA ĐÁNH GIÁ NĂNG LỰC TIẾNG ANH";
+
+    [JsonPropertyName("student_name")]
+    public string? Student_Name { get; set; }
+
+    [JsonPropertyName("student_id")]
+    public string? Student_Id { get; set; }
+
+    [JsonPropertyName("duration_minutes")]
+    public int Duration_Minutes { get; set; } = 45;
+
+    [JsonPropertyName("total_score")]
+    public double Total_Score { get; set; } = 10.0;
+
+    [JsonPropertyName("sections")]
+    public List<ApiExamSection> Sections { get; set; } = new();
+}
+
+public class ApiExamSection
+{
+    [JsonPropertyName("section_id")]
+    public string Section_Id { get; set; } = string.Empty;
+
+    [JsonPropertyName("section_number")]
+    public string Section_Number { get; set; } = "I";
+
+    [JsonPropertyName("section_type")]
+    public string Section_Type { get; set; } = "vocabulary"; // warnings, cloze, word_ordering, vocabulary
+
+    [JsonPropertyName("title")]
+    public string Title { get; set; } = string.Empty;
+
+    [JsonPropertyName("instructions")]
+    public string Instructions { get; set; } = string.Empty;
+
+    [JsonPropertyName("points")]
+    public double Points { get; set; } = 1.0;
+
+    [JsonPropertyName("passage")]
+    public string? Passage { get; set; }
+
+    [JsonPropertyName("questions")]
+    public List<ApiExamQuestion> Questions { get; set; } = new();
+}
+
+public class ApiExamQuestion
+{
+    [JsonPropertyName("question_number")]
+    public int Question_Number { get; set; }
+
+    [JsonPropertyName("question_text")]
+    public string Question_Text { get; set; } = string.Empty;
+
+    [JsonPropertyName("sign_type")]
+    public string? Sign_Type { get; set; }
+
+    [JsonPropertyName("sign_icon")]
+    public string? Sign_Icon { get; set; }
+
+    [JsonPropertyName("options")]
+    public List<string> Options { get; set; } = new();
+
+    [JsonPropertyName("correct_answer")]
+    public string Correct_Answer { get; set; } = string.Empty;
+
+    [JsonPropertyName("scrambled_words")]
+    public List<string>? Scrambled_Words { get; set; }
+
+    [JsonPropertyName("explanation")]
+    public string? Explanation { get; set; }
+
+    [JsonPropertyName("points")]
+    public double Points { get; set; } = 0.5;
+}
+
+public class ApiStudentExamAnswer
+{
+    [JsonPropertyName("question_number")]
+    public int Question_Number { get; set; }
+
+    [JsonPropertyName("section_id")]
+    public string Section_Id { get; set; } = string.Empty;
+
+    [JsonPropertyName("selected_answer")]
+    public string Selected_Answer { get; set; } = string.Empty;
+
+    [JsonPropertyName("correct_answer")]
+    public string? Correct_Answer { get; set; }
+
+    [JsonPropertyName("is_correct")]
+    public bool Is_Correct { get; set; }
+
+    [JsonPropertyName("earned_points")]
+    public double Earned_Points { get; set; }
+
+    [JsonPropertyName("max_points")]
+    public double Max_Points { get; set; }
+}
+
+public class ExamGenerationRequestDto
+{
+    [JsonPropertyName("student_id")]
+    public string Student_Id { get; set; } = string.Empty;
+
+    [JsonPropertyName("topic_ids")]
+    public List<string> Topic_Ids { get; set; } = new();
+
+    [JsonPropertyName("cefr_level")]
+    public string Cefr_Level { get; set; } = "B2";
+
+    [JsonPropertyName("include_signs")]
+    public bool Include_Signs { get; set; } = true;
+
+    [JsonPropertyName("signs_count")]
+    public int Signs_Count { get; set; } = 2;
+
+    [JsonPropertyName("signs_points")]
+    public double Signs_Points { get; set; } = 0.5;
+
+    [JsonPropertyName("include_cloze")]
+    public bool Include_Cloze { get; set; } = true;
+
+    [JsonPropertyName("cloze_count")]
+    public int Cloze_Count { get; set; } = 6;
+
+    [JsonPropertyName("cloze_points")]
+    public double Cloze_Points { get; set; } = 1.5;
+
+    [JsonPropertyName("include_word_ordering")]
+    public bool Include_Word_Ordering { get; set; } = true;
+
+    [JsonPropertyName("word_ordering_count")]
+    public int Word_Ordering_Count { get; set; } = 2;
+
+    [JsonPropertyName("word_ordering_points")]
+    public double Word_Ordering_Points { get; set; } = 1.0;
+
+    [JsonPropertyName("include_vocabulary")]
+    public bool Include_Vocabulary { get; set; } = true;
+
+    [JsonPropertyName("vocabulary_count")]
+    public int Vocabulary_Count { get; set; } = 4;
+
+    [JsonPropertyName("vocabulary_points")]
+    public double Vocabulary_Points { get; set; } = 1.0;
+
+    [JsonPropertyName("duration_minutes")]
+    public int Duration_Minutes { get; set; } = 45;
+
+    [JsonPropertyName("due_date")]
+    public string? Due_Date { get; set; }
+
+    [JsonPropertyName("show_answers")]
+    public bool Show_Answers { get; set; } = false;
+}
+
+public class StudentTopicsResponse
+{
+    [JsonPropertyName("success")]
+    public bool Success { get; set; }
+
+    [JsonPropertyName("student")]
+    public AuthUser? Student { get; set; }
+
+    [JsonPropertyName("topics")]
+    public List<ApiTopic> Topics { get; set; } = new();
+}
+
+public class GenerateExamResponse
+{
+    [JsonPropertyName("success")]
+    public bool Success { get; set; }
+
+    [JsonPropertyName("exam_structure")]
+    public ApiExamStructure? Exam_Structure { get; set; }
+
+    [JsonPropertyName("error")]
+    public string? Error { get; set; }
+}
+
+public class AssignmentDetailResponse
+{
+    [JsonPropertyName("success")]
+    public bool Success { get; set; }
+
+    [JsonPropertyName("assignment")]
+    public ApiAssignment? Assignment { get; set; }
 }
 
 public class SubmissionsResponse
@@ -253,6 +469,21 @@ public class ApiSubmission
 
     [JsonPropertyName("submitted_at")]
     public string Submitted_At { get; set; } = string.Empty;
+
+    [JsonPropertyName("exam_answers")]
+    public List<ApiStudentExamAnswer> Exam_Answers { get; set; } = new();
+
+    [JsonPropertyName("section_scores")]
+    public Dictionary<string, double> Section_Scores { get; set; } = new();
+
+    [JsonPropertyName("auto_score")]
+    public double? Auto_Score { get; set; }
+
+    [JsonPropertyName("show_answers")]
+    public bool Show_Answers { get; set; } = false;
+
+    [JsonPropertyName("exam_review")]
+    public ApiExamStructure? Exam_Review { get; set; }
 }
 
 public class ApiStatsResponse { [JsonPropertyName("stats")] public ApiStats Stats { get; set; } = new(); }

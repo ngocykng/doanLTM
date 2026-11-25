@@ -65,6 +65,13 @@ public class Assignment
     public double Max_Score { get; set; } = 10.0; // Thang điểm mặc định 0-10
     public string? Reading_Quiz { get; set; } // JSON câu hỏi trắc nghiệm nếu là reading
     public int Submission_Count { get; set; }
+    public string? Target_Student_Id { get; set; }
+    public string? Target_Student_Name { get; set; }
+    public List<string> Topic_Ids { get; set; } = new();
+    public List<string> Topic_Names { get; set; } = new();
+    public string Status { get; set; } = "draft"; // draft, published
+    public bool Show_Answers { get; set; } = false;
+    public ExamStructure? Exam_Structure { get; set; }
 }
 
 public class Submission
@@ -90,6 +97,87 @@ public class Submission
     public string? Graded_By { get; set; }
     public string? Graded_At { get; set; }
     public string? Assessed_Level { get; set; } // CEFR A1 - C2
+    public List<StudentExamAnswer> Exam_Answers { get; set; } = new();
+    public Dictionary<string, double> Section_Scores { get; set; } = new();
+    public double? Auto_Score { get; set; }
+    public bool Show_Answers { get; set; } = false;
+    public ExamStructure? Exam_Review { get; set; }
+}
+
+public class ExamStructure
+{
+    public string Header_Notice { get; set; } = "THÍ SINH KHÔNG ĐƯỢC VIẾT GÌ VÀO PHÁCH NÀY";
+    public string Exam_Title { get; set; } = "BÀI THI KHẢO THÍ TIẾNG ANH THEO CHỦ ĐỀ";
+    public string? Student_Name { get; set; }
+    public string? Student_Id { get; set; }
+    public int Duration_Minutes { get; set; } = 45;
+    public double Total_Score { get; set; } = 10.0;
+    public List<ExamSection> Sections { get; set; } = new();
+}
+
+public class ExamSection
+{
+    public string Section_Id { get; set; } = string.Empty;
+    public string Section_Number { get; set; } = "I"; // I, II, III, IV
+    public string Section_Type { get; set; } = "vocabulary"; // warnings, cloze, word_ordering, vocabulary
+    public string Title { get; set; } = string.Empty; // e.g. "III. WARNINGS – CAUTION SIGNS (0.5pt)"
+    public string Instructions { get; set; } = string.Empty;
+    public double Points { get; set; } = 1.0;
+    public string? Passage { get; set; } // Cho cloze test
+    public List<ExamQuestion> Questions { get; set; } = new();
+}
+
+public class ExamQuestion
+{
+    public int Question_Number { get; set; }
+    public string Question_Text { get; set; } = string.Empty;
+    public string? Sign_Type { get; set; }
+    public string? Sign_Icon { get; set; }
+    public List<string> Options { get; set; } = new();
+    public string Correct_Answer { get; set; } = string.Empty; // A, B, C, D hoặc câu hoàn chỉnh
+    public List<string>? Scrambled_Words { get; set; } // Cho word ordering
+    public string? Explanation { get; set; }
+    public double Points { get; set; } = 0.5;
+}
+
+public class StudentExamAnswer
+{
+    public int Question_Number { get; set; }
+    public string Section_Id { get; set; } = string.Empty;
+    public string Selected_Answer { get; set; } = string.Empty;
+    public string? Correct_Answer { get; set; }
+    public bool Is_Correct { get; set; }
+    public double Earned_Points { get; set; }
+    public double Max_Points { get; set; }
+}
+
+public class ExamGenerationRequestDto
+{
+    public string Student_Id { get; set; } = string.Empty;
+    public List<string> Topic_Ids { get; set; } = new();
+    public string Cefr_Level { get; set; } = "B2";
+    public bool Include_Signs { get; set; } = true;
+    public int Signs_Count { get; set; } = 2;
+    public double Signs_Points { get; set; } = 0.5;
+    public bool Include_Cloze { get; set; } = true;
+    public int Cloze_Count { get; set; } = 6;
+    public double Cloze_Points { get; set; } = 1.5;
+    public bool Include_Word_Ordering { get; set; } = true;
+    public int Word_Ordering_Count { get; set; } = 2;
+    public double Word_Ordering_Points { get; set; } = 1.0;
+    public bool Include_Vocabulary { get; set; } = true;
+    public int Vocabulary_Count { get; set; } = 4;
+    public double Vocabulary_Points { get; set; } = 1.0;
+    public int Duration_Minutes { get; set; } = 45;
+    public string? Due_Date { get; set; }
+    public bool Show_Answers { get; set; } = false;
+}
+
+public class ExamSubmissionDto
+{
+    public string Assignment_Id { get; set; } = string.Empty;
+    public Dictionary<int, string> Answers { get; set; } = new();
+    public int? Duration_Spent { get; set; }
 }
 
 public class ReadingQuizQuestion
@@ -103,7 +191,7 @@ public class ReadingQuizQuestion
 public class AssignmentCreateDto
 {
     public string Title { get; set; } = string.Empty;
-    public string Skill { get; set; } = "writing";
+    public string Skill { get; set; } = "reading";
     public string Target_Level { get; set; } = "B2";
     public int Duration_Minutes { get; set; } = 45;
     public string Content { get; set; } = string.Empty;
@@ -111,6 +199,13 @@ public class AssignmentCreateDto
     public string? Due_Date { get; set; }
     public double Max_Score { get; set; } = 10.0;
     public string? Reading_Quiz { get; set; }
+    public string? Target_Student_Id { get; set; }
+    public string? Target_Student_Name { get; set; }
+    public List<string> Topic_Ids { get; set; } = new();
+    public List<string> Topic_Names { get; set; } = new();
+    public string Status { get; set; } = "draft";
+    public bool Show_Answers { get; set; } = false;
+    public ExamStructure? Exam_Structure { get; set; }
 }
 
 public class AssignmentUpdateDto
@@ -124,6 +219,13 @@ public class AssignmentUpdateDto
     public string? Due_Date { get; set; }
     public double? Max_Score { get; set; }
     public string? Reading_Quiz { get; set; }
+    public string? Target_Student_Id { get; set; }
+    public string? Target_Student_Name { get; set; }
+    public List<string>? Topic_Ids { get; set; }
+    public List<string>? Topic_Names { get; set; }
+    public string? Status { get; set; }
+    public bool? Show_Answers { get; set; }
+    public ExamStructure? Exam_Structure { get; set; }
 }
 
 public class SubmissionCreateDto

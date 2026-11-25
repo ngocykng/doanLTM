@@ -744,6 +744,314 @@
   ],
   "assignments": [
     {
+      "id": "assign-1795528790558",
+      "expert_id": "user-expert-root",
+      "expert_name": "Chuy\u00EAn Gia",
+      "title": "B\u00C0I THI KH\u1EA2O TH\u00CD TI\u1EBENG ANH - CH\u1EE6 \u0110\u1EC0: LIFE",
+      "skill": "exam",
+      "target_level": "B2",
+      "duration_minutes": 45,
+      "department_category": "",
+      "content": "Hue Citadel is one of the most famous (7) ________ in Vietnam. There are many historical citadels in Vietnam, but now only a few remain preserved. A citadel is similar (8) ________ a royal castle. Citadels were homes for Kings and Queens. Hue Citadel was the home of many Kings and (9) ________ families. It was built in the 19th century and was mainly constructed from wood and bricks. The walls were made from strong stone bricks to keep the royal family safe. It doesn\u0027t have (10) ________ dungeons, but there is an impressive moat surrounding it. Today, architects use (11) ________ techniques to protect historical heritage while maintaining structural integrity. Every year, thousands of international visitors (12) ________ the Citadel and admire its majestic royal palaces.",
+      "instructions": "\u0110\u1EC1 thi g\u1ED3m c\u00E1c c\u00E2u h\u1ECFi tr\u1EAFc nghi\u1EC7m v\u00E0 c\u00E2u s\u1EAFp x\u1EBFp t\u1EEB theo m\u1EABu kh\u1EA3o th\u00ED.",
+      "reference_media_url": null,
+      "due_date": "2026-12-01",
+      "created_at": "2026-11-24T13:59:50.5581358Z",
+      "max_score": 4,
+      "reading_quiz": null,
+      "submission_count": 0,
+      "target_student_id": "user-student-root",
+      "target_student_name": "Sinh Vi\u00EAn",
+      "topic_ids": [
+        "topic-1794825045976"
+      ],
+      "topic_names": [
+        "life"
+      ],
+      "status": "published",
+      "show_answers": false,
+      "exam_structure": {
+        "header_notice": "TH\u00CD SINH KH\u00D4NG \u0110\u01AF\u1EE2C VI\u1EBET G\u00CC V\u00C0O PH\u00C1CH N\u00C0Y",
+        "exam_title": "B\u00C0I THI KH\u1EA2O TH\u00CD TI\u1EBENG ANH - CH\u1EE6 \u0110\u1EC0: LIFE",
+        "student_name": "Sinh Vi\u00EAn",
+        "student_id": "user-student-root",
+        "duration_minutes": 45,
+        "total_score": 4,
+        "sections": [
+          {
+            "section_id": "sec-1",
+            "section_number": "I",
+            "section_type": "warnings",
+            "title": "I. WARNINGS \u2013 CAUTION SIGNS (0,5pt)",
+            "instructions": "Look at the sign. What does it say? Choose the best option (A, B, C or D).",
+            "points": 0.5,
+            "passage": null,
+            "questions": [
+              {
+                "question_number": 1,
+                "question_text": "What does the sign say?",
+                "sign_type": "NO_PARKING_TRUCKS",
+                "sign_icon": "\uD83D\uDEAB\uD83D\uDE9B",
+                "options": [
+                  "A. The truck can stop.",
+                  "B. The truck can drive.",
+                  "C. The truck can\u0027t drive.",
+                  "D. The truck can\u0027t park here."
+                ],
+                "correct_answer": "D",
+                "scrambled_words": null,
+                "explanation": "Bi\u1EC3n b\u00E1o c\u1EA5m xe t\u1EA3i \u0111\u1ED7 trong khu v\u1EF1c n\u00E0y.",
+                "points": 0.25
+              },
+              {
+                "question_number": 2,
+                "question_text": "What does the sign warn us?",
+                "sign_type": "NO_LITTERING",
+                "sign_icon": "\uD83D\uDEAF",
+                "options": [
+                  "A. You aren\u0027t allowed to litter here.",
+                  "B. There is a waste basket here.",
+                  "C. You must litter here.",
+                  "D. Put the litter in the garbage bin here."
+                ],
+                "correct_answer": "A",
+                "scrambled_words": null,
+                "explanation": "Bi\u1EC3n b\u00E1o c\u1EA5m v\u1EE9t r\u00E1c b\u1EEBa b\u00E3i.",
+                "points": 0.25
+              }
+            ]
+          },
+          {
+            "section_id": "sec-2",
+            "section_number": "II",
+            "section_type": "vocabulary",
+            "title": "II. VOCABULARY MULTIPLE CHOICE (1,0pt)",
+            "instructions": "Choose the word or phrase (A, B, C or D) that best completes each sentence.",
+            "points": 1,
+            "passage": null,
+            "questions": [
+              {
+                "question_number": 3,
+                "question_text": "This _______ concept is useful in life.",
+                "sign_type": null,
+                "sign_icon": null,
+                "options": [
+                  "A. resilience",
+                  "B. traditional",
+                  "C. temporary",
+                  "D. expensive"
+                ],
+                "correct_answer": "A",
+                "scrambled_words": null,
+                "explanation": "T\u1EEB \u0027resilience\u0027 c\u00F3 ngh\u0129a l\u00E0: S\u1EF1 ki\u00EAn c\u01B0\u1EDDng.",
+                "points": 0.25
+              },
+              {
+                "question_number": 4,
+                "question_text": "This _______ concept is useful in life.",
+                "sign_type": null,
+                "sign_icon": null,
+                "options": [
+                  "A. meticulous",
+                  "B. temporary",
+                  "C. expensive",
+                  "D. fragile"
+                ],
+                "correct_answer": "A",
+                "scrambled_words": null,
+                "explanation": "T\u1EEB \u0027meticulous\u0027 c\u00F3 ngh\u0129a l\u00E0: T\u1EC9 m\u1EC9.",
+                "points": 0.25
+              },
+              {
+                "question_number": 5,
+                "question_text": "This _______ concept is useful in life.",
+                "sign_type": null,
+                "sign_icon": null,
+                "options": [
+                  "A. enhance",
+                  "B. expensive",
+                  "C. fragile",
+                  "D. complicated"
+                ],
+                "correct_answer": "A",
+                "scrambled_words": null,
+                "explanation": "T\u1EEB \u0027enhance\u0027 c\u00F3 ngh\u0129a l\u00E0: N\u00E2ng cao.",
+                "points": 0.25
+              },
+              {
+                "question_number": 6,
+                "question_text": "This _______ concept is useful in life.",
+                "sign_type": null,
+                "sign_icon": null,
+                "options": [
+                  "A. sustainable",
+                  "B. fragile",
+                  "C. complicated",
+                  "D. dangerous"
+                ],
+                "correct_answer": "A",
+                "scrambled_words": null,
+                "explanation": "T\u1EEB \u0027sustainable\u0027 c\u00F3 ngh\u0129a l\u00E0: B\u1EC1n v\u1EEFng.",
+                "points": 0.25
+              }
+            ]
+          },
+          {
+            "section_id": "sec-3",
+            "section_number": "III",
+            "section_type": "cloze",
+            "title": "III. CLOZE TEST (1,5pts)",
+            "instructions": "Choose the word or phrase (A, B, C or D) that best fits each space in the following passage.",
+            "points": 1.5,
+            "passage": "Hue Citadel is one of the most famous (7) ________ in Vietnam. There are many historical citadels in Vietnam, but now only a few remain preserved. A citadel is similar (8) ________ a royal castle. Citadels were homes for Kings and Queens. Hue Citadel was the home of many Kings and (9) ________ families. It was built in the 19th century and was mainly constructed from wood and bricks. The walls were made from strong stone bricks to keep the royal family safe. It doesn\u0027t have (10) ________ dungeons, but there is an impressive moat surrounding it. Today, architects use (11) ________ techniques to protect historical heritage while maintaining structural integrity. Every year, thousands of international visitors (12) ________ the Citadel and admire its majestic royal palaces.",
+            "questions": [
+              {
+                "question_number": 7,
+                "question_text": "Choose the best word for space (7):",
+                "sign_type": null,
+                "sign_icon": null,
+                "options": [
+                  "A. buildings",
+                  "B. homes",
+                  "C. citadels",
+                  "D. shopping malls"
+                ],
+                "correct_answer": "C",
+                "scrambled_words": null,
+                "explanation": "Hue Citadel l\u00E0 m\u1ED9t trong nh\u1EEFng th\u00E0nh tr\u00EC (citadels) n\u1ED5i ti\u1EBFng.",
+                "points": 0.25
+              },
+              {
+                "question_number": 8,
+                "question_text": "Choose the best word for space (8):",
+                "sign_type": null,
+                "sign_icon": null,
+                "options": [
+                  "A. in",
+                  "B. on",
+                  "C. to",
+                  "D. with"
+                ],
+                "correct_answer": "C",
+                "scrambled_words": null,
+                "explanation": "C\u1EA5u tr\u00FAc: \u0027similar to\u0027 (t\u01B0\u01A1ng t\u1EF1 nh\u01B0).",
+                "points": 0.25
+              },
+              {
+                "question_number": 9,
+                "question_text": "Choose the best word for space (9):",
+                "sign_type": null,
+                "sign_icon": null,
+                "options": [
+                  "A. Kings\u0027",
+                  "B. theirs",
+                  "C. their",
+                  "D. both A \u0026 C"
+                ],
+                "correct_answer": "C",
+                "scrambled_words": null,
+                "explanation": "T\u00EDnh t\u1EEB s\u1EDF h\u1EEFu: \u0027their families\u0027.",
+                "points": 0.25
+              },
+              {
+                "question_number": 10,
+                "question_text": "Choose the best word for space (10):",
+                "sign_type": null,
+                "sign_icon": null,
+                "options": [
+                  "A. some",
+                  "B. any",
+                  "C. few",
+                  "D. a little"
+                ],
+                "correct_answer": "B",
+                "scrambled_words": null,
+                "explanation": "C\u00E2u ph\u1EE7 \u0111\u1ECBnh: \u0027doesn\u0027t have any dungeons\u0027.",
+                "points": 0.25
+              },
+              {
+                "question_number": 11,
+                "question_text": "Choose the best word for space (11):",
+                "sign_type": null,
+                "sign_icon": null,
+                "options": [
+                  "A. sustainable",
+                  "B. destructive",
+                  "C. fragile",
+                  "D. polluted"
+                ],
+                "correct_answer": "A",
+                "scrambled_words": null,
+                "explanation": "K\u1EF9 thu\u1EADt b\u1EC1n v\u1EEFng (sustainable techniques).",
+                "points": 0.25
+              },
+              {
+                "question_number": 12,
+                "question_text": "Choose the best word for space (12):",
+                "sign_type": null,
+                "sign_icon": null,
+                "options": [
+                  "A. visits",
+                  "B. visiting",
+                  "C. visited",
+                  "D. visit"
+                ],
+                "correct_answer": "D",
+                "scrambled_words": null,
+                "explanation": "Ch\u1EE7 ng\u1EEF s\u1ED1 nhi\u1EC1u \u0027thousands of people\u0027 \u0111i v\u1EDBi \u0111\u1ED9ng t\u1EEB nguy\u00EAn m\u1EABu \u0027visit\u0027.",
+                "points": 0.25
+              }
+            ]
+          },
+          {
+            "section_id": "sec-4",
+            "section_number": "IV",
+            "section_type": "word_ordering",
+            "title": "IV. WORD ORDERING (1,0pt)",
+            "instructions": "Rearrange the given words or phrases into a complete, meaningful and grammatically correct sentence.",
+            "points": 1,
+            "passage": null,
+            "questions": [
+              {
+                "question_number": 13,
+                "question_text": "Rearrange the words to form a correct sentence:",
+                "sign_type": null,
+                "sign_icon": null,
+                "options": [],
+                "correct_answer": "The ancient citadel was built with strong and sustainable bricks.",
+                "scrambled_words": [
+                  "was built",
+                  "The ancient citadel",
+                  "with",
+                  "sustainable bricks.",
+                  "strong and"
+                ],
+                "explanation": "S\u1EAFp x\u1EBFp th\u00E0nh c\u00E2u ho\u00E0n ch\u1EC9nh \u0111\u00FAng ng\u1EEF ph\u00E1p ti\u1EBFng Anh.",
+                "points": 0.5
+              },
+              {
+                "question_number": 14,
+                "question_text": "Rearrange the words to form a correct sentence:",
+                "sign_type": null,
+                "sign_icon": null,
+                "options": [],
+                "correct_answer": "Modern architects work meticulously to preserve valuable heritage structures.",
+                "scrambled_words": [
+                  "to preserve",
+                  "Modern architects",
+                  "heritage structures.",
+                  "work meticulously",
+                  "valuable"
+                ],
+                "explanation": "S\u1EAFp x\u1EBFp th\u00E0nh c\u00E2u: Ch\u1EE7 ng\u1EEF \u002B tr\u1EA1ng t\u1EEB/\u0111\u1ED9ng t\u1EEB \u002B m\u1EE5c \u0111\u00EDch.",
+                "points": 0.5
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
       "id": "assign-w-01",
       "expert_id": "user-expert-root",
       "expert_name": "Chuy\u00EAn gia Ng\u00F4n ng\u1EEF",
@@ -759,7 +1067,14 @@
       "created_at": "2026-11-20T10:00:00Z",
       "max_score": 10,
       "reading_quiz": null,
-      "submission_count": 1
+      "submission_count": 1,
+      "target_student_id": null,
+      "target_student_name": null,
+      "topic_ids": [],
+      "topic_names": [],
+      "status": "draft",
+      "show_answers": false,
+      "exam_structure": null
     },
     {
       "id": "assign-s-02",
@@ -777,7 +1092,14 @@
       "created_at": "2026-11-20T11:00:00Z",
       "max_score": 10,
       "reading_quiz": null,
-      "submission_count": 0
+      "submission_count": 0,
+      "target_student_id": null,
+      "target_student_name": null,
+      "topic_ids": [],
+      "topic_names": [],
+      "status": "draft",
+      "show_answers": false,
+      "exam_structure": null
     },
     {
       "id": "assign-l-03",
@@ -795,7 +1117,14 @@
       "created_at": "2026-11-20T12:00:00Z",
       "max_score": 10,
       "reading_quiz": null,
-      "submission_count": 0
+      "submission_count": 0,
+      "target_student_id": null,
+      "target_student_name": null,
+      "topic_ids": [],
+      "topic_names": [],
+      "status": "draft",
+      "show_answers": false,
+      "exam_structure": null
     },
     {
       "id": "assign-r-04",
@@ -813,7 +1142,14 @@
       "created_at": "2026-11-20T13:00:00Z",
       "max_score": 10,
       "reading_quiz": "[{\u0022id\u0022:1,\u0022question\u0022:\u0022What is the primary aim of biophilic design?\u0022,\u0022options\u0022:[\u0022A. Connect occupants to nature\u0022,\u0022B. Minimize construction costs\u0022,\u0022C. Reduce office space\u0022,\u0022D. Replace human workforce\u0022],\u0022correct_answer\u0022:\u0022A\u0022},{\u0022id\u0022:2,\u0022question\u0022:\u0022What increase in productivity was reported?\u0022,\u0022options\u0022:[\u0022A. 5%\u0022,\u0022B. 15%\u0022,\u0022C. 25%\u0022,\u0022D. 50%\u0022],\u0022correct_answer\u0022:\u0022B\u0022},{\u0022id\u0022:3,\u0022question\u0022:\u0022Which element is highlighted in the passage?\u0022,\u0022options\u0022:[\u0022A. Artificial plastics\u0022,\u0022B. Heavy industrial metal\u0022,\u0022C. Natural lighting and vegetation\u0022,\u0022D. Windowless cubicles\u0022],\u0022correct_answer\u0022:\u0022C\u0022}]",
-      "submission_count": 2
+      "submission_count": 2,
+      "target_student_id": null,
+      "target_student_name": null,
+      "topic_ids": [],
+      "topic_names": [],
+      "status": "draft",
+      "show_answers": false,
+      "exam_structure": null
     }
   ],
   "submissions": [
@@ -838,7 +1174,12 @@
       "feedback": null,
       "graded_by": null,
       "graded_at": null,
-      "assessed_level": null
+      "assessed_level": null,
+      "exam_answers": [],
+      "section_scores": {},
+      "auto_score": null,
+      "show_answers": false,
+      "exam_review": null
     },
     {
       "id": "sub-demo-01",
@@ -861,7 +1202,12 @@
       "feedback": "B\u00E0i vi\u1EBFt r\u1EA5t m\u1EA1ch l\u1EA1c, s\u1EED d\u1EE5ng t\u1EEB v\u1EF1ng chuy\u00EAn ng\u00E0nh ki\u1EBFn tr\u00FAc xu\u1EA5t s\u1EAFc (cross-laminated timber, embodied carbon, operational emissions). Ng\u1EEF ph\u00E1p \u0111a d\u1EA1ng v\u00E0 c\u1EA5u tr\u00FAc lu\u1EADn \u0111i\u1EC3m thuy\u1EBFt ph\u1EE5c.",
       "graded_by": "Chuy\u00EAn gia Ng\u00F4n ng\u1EEF",
       "graded_at": "2026-11-20T16:00:00Z",
-      "assessed_level": "B2"
+      "assessed_level": "B2",
+      "exam_answers": [],
+      "section_scores": {},
+      "auto_score": null,
+      "show_answers": false,
+      "exam_review": null
     },
     {
       "id": "sub-demo-02",
@@ -884,7 +1230,12 @@
       "feedback": null,
       "graded_by": null,
       "graded_at": null,
-      "assessed_level": null
+      "assessed_level": null,
+      "exam_answers": [],
+      "section_scores": {},
+      "auto_score": null,
+      "show_answers": false,
+      "exam_review": null
     }
   ],
   "consultations": [],
