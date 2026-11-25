@@ -10,12 +10,14 @@ public enum FlashcardFilterMode
 {
     All,
     Unmastered,
-    Mastered
+    Mastered,
+    DueForReview
 }
 
 public class Flashcard3DViewModel : BaseViewModel
 {
     private readonly AudioService _audioService;
+    private readonly SpacedRepetitionService _srsService = new();
     private readonly List<EnglishFlashcard> _allCards = new();
     private readonly ObservableCollection<EnglishFlashcard> _cards = new();
     private int _currentIndex;
@@ -34,6 +36,7 @@ public class Flashcard3DViewModel : BaseViewModel
         PrevCommand = new RelayCommand(_ => PrevCard(), _ => CanPrev);
         PronounceCommand = new RelayCommand(_ => SpeakCurrentWord(), _ => CurrentCard is not null);
         MarkMasteredCommand = new RelayCommand(_ => ToggleMastered(), _ => CurrentCard is not null);
+        SaveNoteCommand = new RelayCommand(_ => SaveCurrentNote(), _ => CurrentCard is not null);
         CopyCommand = new RelayCommand(_ => CopyCurrentCard(), _ => CurrentCard is not null);
         ShuffleCommand = new RelayCommand(_ => ShuffleCards(), _ => _cards.Count > 1);
         ResetCommand = new RelayCommand(_ => ResetDeck(), _ => _cards.Count > 0);
@@ -41,6 +44,7 @@ public class Flashcard3DViewModel : BaseViewModel
         FilterAllCommand = new RelayCommand(_ => FilterMode = FlashcardFilterMode.All);
         FilterUnmasteredCommand = new RelayCommand(_ => FilterMode = FlashcardFilterMode.Unmastered);
         FilterMasteredCommand = new RelayCommand(_ => FilterMode = FlashcardFilterMode.Mastered);
+        FilterDueCommand = new RelayCommand(_ => FilterMode = FlashcardFilterMode.DueForReview);
 
         SetCards(cards);
     }
@@ -97,12 +101,17 @@ public class Flashcard3DViewModel : BaseViewModel
             OnPropertyChanged(nameof(IsFilterAllActive));
             OnPropertyChanged(nameof(IsFilterUnmasteredActive));
             OnPropertyChanged(nameof(IsFilterMasteredActive));
+            OnPropertyChanged(nameof(IsFilterDueActive));
         }
     }
 
     public bool IsFilterAllActive => _filterMode == FlashcardFilterMode.All;
     public bool IsFilterUnmasteredActive => _filterMode == FlashcardFilterMode.Unmastered;
     public bool IsFilterMasteredActive => _filterMode == FlashcardFilterMode.Mastered;
+    public bool IsFilterDueActive => _filterMode == FlashcardFilterMode.DueForReview;
+
+    public static bool IsCardDue(EnglishFlashcard card)
+        => !card.IsMastered || !card.NextReviewAt.HasValue || card.NextReviewAt.Value <= DateTime.UtcNow;
 
     public string ToastNotification
     {
@@ -119,6 +128,7 @@ public class Flashcard3DViewModel : BaseViewModel
     public int TotalCount => _allCards.Count;
     public int MasteredCount => _allCards.Count(c => c.IsMastered);
     public int UnmasteredCount => _allCards.Count(c => !c.IsMastered);
+    public int DueCount => _allCards.Count(IsCardDue);
     public double ProgressPercentage => TotalCount > 0 ? (MasteredCount * 100.0) / TotalCount : 0;
     public string ProgressSummary => $"Đã thuộc: {MasteredCount} / {TotalCount} từ ({ProgressPercentage:0}%)";
     public string ProgressText => _cards.Count == 0 ? "0 / 0" : $"{_currentIndex + 1} / {_cards.Count}";
@@ -131,12 +141,14 @@ public class Flashcard3DViewModel : BaseViewModel
     public ICommand PrevCommand { get; }
     public ICommand PronounceCommand { get; }
     public ICommand MarkMasteredCommand { get; }
+    public ICommand SaveNoteCommand { get; }
     public ICommand CopyCommand { get; }
     public ICommand ShuffleCommand { get; }
     public ICommand ResetCommand { get; }
     public ICommand FilterAllCommand { get; }
     public ICommand FilterUnmasteredCommand { get; }
     public ICommand FilterMasteredCommand { get; }
+    public ICommand FilterDueCommand { get; }
 
     public void SetCards(List<EnglishFlashcard> cards, string? topicTitle = null, string? topicLevel = null)
     {
@@ -156,6 +168,7 @@ public class Flashcard3DViewModel : BaseViewModel
         {
             FlashcardFilterMode.Unmastered => _allCards.Where(c => !c.IsMastered).ToList(),
             FlashcardFilterMode.Mastered => _allCards.Where(c => c.IsMastered).ToList(),
+            FlashcardFilterMode.DueForReview => _allCards.Where(IsCardDue).ToList(),
             _ => _allCards.ToList()
         };
 
@@ -195,17 +208,23 @@ public class Flashcard3DViewModel : BaseViewModel
     public void ToggleMastered()
     {
         if (CurrentCard is null) return;
-        CurrentCard.IsMastered = !CurrentCard.IsMastered;
-        CurrentCard.ReviewCount += 1;
-        CurrentCard.LastReviewedAt = DateTime.Now;
+        int quality = CurrentCard.IsMastered ? 2 : 5;
+        _srsService.ApplyReview(CurrentCard, quality);
 
         UpdateProgressMetrics();
         OnPropertyChanged(nameof(CurrentCard));
         CardMarkedMastered?.Invoke(CurrentCard);
 
         ToastNotification = CurrentCard.IsMastered
-            ? $"✓ Đã thuộc từ: {CurrentCard.Word}"
+            ? $"✓ Đã thuộc từ: {CurrentCard.Word} (Ôn lại sau {CurrentCard.IntervalDays} ngày)"
             : $"⏳ Đã chuyển sang cần ôn: {CurrentCard.Word}";
+    }
+
+    public void SaveCurrentNote()
+    {
+        if (CurrentCard is null) return;
+        CardMarkedMastered?.Invoke(CurrentCard);
+        ToastNotification = $"💾 Đã lưu ghi chú cho từ '{CurrentCard.Word}'.";
     }
 
     public void CopyCurrentCard()
@@ -259,6 +278,7 @@ public class Flashcard3DViewModel : BaseViewModel
         OnPropertyChanged(nameof(TotalCount));
         OnPropertyChanged(nameof(MasteredCount));
         OnPropertyChanged(nameof(UnmasteredCount));
+        OnPropertyChanged(nameof(DueCount));
         OnPropertyChanged(nameof(ProgressPercentage));
         OnPropertyChanged(nameof(ProgressSummary));
     }
@@ -270,6 +290,7 @@ public class Flashcard3DViewModel : BaseViewModel
         if (PrevCommand is RelayCommand prev) prev.RaiseCanExecuteChanged();
         if (PronounceCommand is RelayCommand speak) speak.RaiseCanExecuteChanged();
         if (MarkMasteredCommand is RelayCommand master) master.RaiseCanExecuteChanged();
+        if (SaveNoteCommand is RelayCommand saveNote) saveNote.RaiseCanExecuteChanged();
         if (CopyCommand is RelayCommand copy) copy.RaiseCanExecuteChanged();
         if (ShuffleCommand is RelayCommand shuffle) shuffle.RaiseCanExecuteChanged();
         if (ResetCommand is RelayCommand reset) reset.RaiseCanExecuteChanged();

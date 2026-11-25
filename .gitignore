@@ -1,8 +1,11 @@
-﻿.env
+.env
 .env.*
 !.env.example
 .vs/
 **/bin/
 **/obj/
+**/TestResults/
 *.user
+*.suo
 **/appsettings.Development.json
+BilingualVocabApi/vocab_database.json

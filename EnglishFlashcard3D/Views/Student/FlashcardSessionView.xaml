@@ -1,0 +1,79 @@
+<UserControl x:Class="EnglishFlashcard3D.Views.Student.FlashcardSessionView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:controls="clr-namespace:EnglishFlashcard3D.Views.Controls"
+             mc:Ignorable="d">
+    <Grid Margin="4">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- HEADER PHIÊN HỌC KIỂU DUOLINGO: QUAY LẠI + PROGRESS BAR DÀY -->
+        <Grid Grid.Row="0" Margin="0,0,0,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="14"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="14"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <Button Grid.Column="0" Content="← Lộ trình" Command="{Binding NavigateCommand}" CommandParameter="LearningPath"
+                    Style="{StaticResource DuoOutlineButton}" Foreground="#777777" Padding="12,7"/>
+
+            <ProgressBar Grid.Column="2" Value="{Binding FlashcardSession.ProgressPercentage, Mode=OneWay}" Minimum="0" Maximum="100" VerticalAlignment="Center"/>
+
+            <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center">
+                <Border Background="#F0FBE8" BorderBrush="#58CC02" BorderThickness="1.5" CornerRadius="10" Padding="10,4" Margin="0,0,8,0">
+                    <TextBlock Text="{Binding FlashcardSession.ProgressSummary}" Foreground="#58A700" FontWeight="ExtraBold" FontSize="12"/>
+                </Border>
+                <Border Background="#DDF4FF" BorderBrush="#84D8FF" BorderThickness="1.5" CornerRadius="10" Padding="10,4">
+                    <TextBlock Text="{Binding FlashcardSession.ProgressText}" Foreground="#1899D6" FontWeight="ExtraBold" FontSize="12"/>
+                </Border>
+            </StackPanel>
+        </Grid>
+
+        <!-- BỘ LỌC & TIỆN ÍCH -->
+        <DockPanel Grid.Row="1" Margin="0,0,0,10" LastChildFill="False">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="{Binding FlashcardSession.TopicTitle}" FontWeight="ExtraBold" FontSize="17" Foreground="#3C3C3C" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <Border Background="#FFC800" CornerRadius="8" Padding="8,3" VerticalAlignment="Center" Margin="0,0,12,0">
+                    <TextBlock Text="{Binding FlashcardSession.TopicLevel}" Foreground="#3C3C3C" FontWeight="ExtraBold" FontSize="11"/>
+                </Border>
+                <Button Content="Tất cả" Command="{Binding FlashcardSession.FilterAllCommand}" Style="{StaticResource DuoOutlineButton}" Padding="10,5" Margin="0,0,6,0"/>
+                <Button Content="⏳ Cần ôn" Command="{Binding FlashcardSession.FilterUnmasteredCommand}" Style="{StaticResource DuoOutlineButton}" Foreground="#CC7800" Padding="10,5" Margin="0,0,6,0"/>
+                <Button Content="{Binding FlashcardSession.DueCount, StringFormat='⏰ Đến hạn ({0})'}" Command="{Binding FlashcardSession.FilterDueCommand}" Style="{StaticResource DuoOutlineButton}" Foreground="#1899D6" Padding="10,5" Margin="0,0,6,0"/>
+                <Button Content="✓ Đã thuộc" Command="{Binding FlashcardSession.FilterMasteredCommand}" Style="{StaticResource DuoOutlineButton}" Foreground="#58A700" Padding="10,5"/>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center">
+                <Button Content="🔀 Xáo thẻ (S)" Command="{Binding FlashcardSession.ShuffleCommand}" Style="{StaticResource DuoOutlineButton}" Foreground="#777777" Padding="10,5" Margin="0,0,6,0"/>
+                <Button Content="↺ Đặt lại (R)" Command="{Binding FlashcardSession.ResetCommand}" Style="{StaticResource DuoOutlineButton}" Foreground="#777777" Padding="10,5"/>
+            </StackPanel>
+        </DockPanel>
+
+        <!-- THẺ FLASHCARD 3D TRỌNG TÂM -->
+        <controls:Card3DView Grid.Row="2" DataContext="{Binding FlashcardSession}" VerticalAlignment="Center"/>
+
+        <!-- THANH ĐIỀU KHIỂN TACTILE 3D -->
+        <WrapPanel Grid.Row="3" HorizontalAlignment="Center" Margin="0,10,0,8">
+            <Button Content="◀ TRƯỚC" Width="105" Margin="4" Command="{Binding FlashcardSession.PrevCommand}" Style="{StaticResource DuoOutlineButton}" Foreground="#777777"/>
+            <Button Content="↻ LẬT THẺ (SPACE)" Width="155" Margin="4" Command="{Binding FlashcardSession.FlipCommand}" Style="{StaticResource DuoBlueButton}"/>
+            <Button Content="🔊 PHÁT ÂM" Width="115" Margin="4" Command="{Binding FlashcardSession.PronounceCommand}" Style="{StaticResource DuoOutlineButton}"/>
+            <Button Content="📋 SAO CHÉP" Width="115" Margin="4" Command="{Binding FlashcardSession.CopyCommand}" Style="{StaticResource DuoOutlineButton}" Foreground="#777777"/>
+            <Button Content="✓ ĐÃ THUỘC (M)" Width="140" Margin="4" Command="{Binding FlashcardSession.MarkMasteredCommand}" Style="{StaticResource DuoPrimaryButton}"/>
+            <Button Content="SAU ▶" Width="105" Margin="4" Command="{Binding FlashcardSession.NextCommand}" Style="{StaticResource DuoOutlineButton}" Foreground="#777777"/>
+        </WrapPanel>
+
+        <Border Grid.Row="4" Background="#F7F7F7" BorderBrush="#E5E5E5" BorderThickness="1.5" CornerRadius="12" Padding="10,6">
+            <TextBlock Text="⌨ Phím tắt: [Space] Lật thẻ  •  [←/→] Trước/Sau  •  [P] Phát âm  •  [M] Đã thuộc  •  [C] Sao chép  •  [S] Xáo thẻ  •  [R] Đặt lại"
+                       Foreground="#777777" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+        </Border>
+    </Grid>
+</UserControl>

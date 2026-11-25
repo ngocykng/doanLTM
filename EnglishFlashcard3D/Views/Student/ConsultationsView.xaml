@@ -1,0 +1,41 @@
+<UserControl x:Class="EnglishFlashcard3D.Views.Student.ConsultationsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d">
+    <Border Style="{StaticResource DuoCardBorder}" Margin="4">
+        <DockPanel>
+            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+                <TextBlock Text="🎯 Tư vấn lộ trình học từ Giảng viên" FontSize="18" FontWeight="ExtraBold" Foreground="#3C3C3C" VerticalAlignment="Center"/>
+                <Button Content="↻ Tải lại" Command="{Binding RefreshF4Command}" Style="{StaticResource DuoOutlineButton}" DockPanel.Dock="Right" Padding="12,6"/>
+            </DockPanel>
+
+            <ListBox ItemsSource="{Binding Consultations}">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Border Background="#FFFFFF" BorderBrush="#E5E5E5" BorderThickness="2,2,2,4" CornerRadius="16" Padding="16">
+                            <StackPanel>
+                                <DockPanel Margin="0,0,0,8">
+                                    <TextBlock Text="{Binding Expert_Name, StringFormat='Giảng viên: {0}'}" FontWeight="ExtraBold" Foreground="#1899D6" FontSize="15"/>
+                                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                                        <Border Background="#DDF4FF" CornerRadius="8" Padding="8,3" Margin="0,0,6,0">
+                                            <TextBlock Text="{Binding Current_Level, StringFormat='Hiện tại: {0}'}" Foreground="#1899D6" FontSize="11" FontWeight="ExtraBold"/>
+                                        </Border>
+                                        <Border Background="#F0FBE8" CornerRadius="8" Padding="8,3">
+                                            <TextBlock Text="{Binding Recommended_Level, StringFormat='Mục tiêu: {0}'}" Foreground="#58A700" FontSize="11" FontWeight="ExtraBold"/>
+                                        </Border>
+                                    </StackPanel>
+                                </DockPanel>
+                                <TextBlock Text="{Binding Advice, StringFormat='Lời khuyên: {0}'}" Foreground="#3C3C3C" TextWrapping="Wrap" FontSize="13.5" Margin="0,0,0,6"/>
+                                <Border Background="#F7EBFF" BorderBrush="#CE82FF" BorderThickness="1.5" CornerRadius="10" Padding="10">
+                                    <TextBlock Text="{Binding Study_Plan, StringFormat='📅 Kế hoạch: {0}'}" Foreground="#7B35BD" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="12.5"/>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </DockPanel>
+    </Border>
+</UserControl>

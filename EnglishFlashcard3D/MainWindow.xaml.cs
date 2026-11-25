@@ -11,7 +11,17 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        DataContext = new MainViewModel();
+        var vm = new MainViewModel();
+        vm.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(MainViewModel.Password)
+                && string.IsNullOrEmpty(vm.Password)
+                && !string.IsNullOrEmpty(AuthPasswordBox.Password))
+            {
+                AuthPasswordBox.Clear();
+            }
+        };
+        DataContext = vm;
     }
 
     private void AuthPasswordBox_OnPasswordChanged(object sender, System.Windows.RoutedEventArgs e)
@@ -25,7 +35,7 @@ public partial class MainWindow : Window
             Keyboard.FocusedElement is ComboBox { IsEditable: true })
             return;
 
-        if (DataContext is not MainViewModel vm) return;
+        if (DataContext is not MainViewModel vm || !vm.IsStudent || vm.CurrentNavPage != "Flashcards") return;
         var command = e.Key switch
         {
             Key.Space => vm.FlashcardSession.FlipCommand,

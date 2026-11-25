@@ -1,1146 +1,333 @@
-﻿<Window x:Class="EnglishFlashcard3D.MainWindow"
+<Window x:Class="EnglishFlashcard3D.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:controls="clr-namespace:EnglishFlashcard3D.Views.Controls"
+        xmlns:student="clr-namespace:EnglishFlashcard3D.Views.Student"
+        xmlns:expert="clr-namespace:EnglishFlashcard3D.Views.Expert"
+        xmlns:admin="clr-namespace:EnglishFlashcard3D.Views.Admin"
         mc:Ignorable="d"
-        Title="English Flashcard 3D - Ứng dụng Học Từ Vựng Tiếng Anh"
-        Height="780"
-        Width="1220"
-        MinHeight="700"
-        MinWidth="1100"
+        Title="LTM Lingo - Học Tiếng Anh Phong Cách Duolingo"
+        Height="800"
+        Width="1280"
+        MinHeight="720"
+        MinWidth="1120"
         WindowStartupLocation="CenterScreen"
-        Background="#FF020617"
+        Background="#FFFFFF"
         PreviewKeyDown="Window_OnPreviewKeyDown">
-    <Window.Resources>
-        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
-    </Window.Resources>
 
-    <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
+    <Grid Background="#FFFFFF">
+        <!-- ======================================================== -->
+        <!-- APP SHELL KHI ĐÃ ĐĂNG NHẬP (SIDEBAR + CONTENT + RAIL)    -->
+        <!-- ======================================================== -->
+        <Grid Visibility="{Binding IsLoggedIn, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="235"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
 
-        <!-- Thanh điều hướng trên cùng (User info & Logout) -->
-        <Border Grid.Row="0" Background="#FF0B1120" BorderBrush="#FF1E293B" BorderThickness="0,0,0,1" Padding="16,10"
-                Visibility="{Binding IsLoggedIn, Converter={StaticResource BooleanToVisibilityConverter}}">
-            <DockPanel LastChildFill="False">
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="📚 LTM English Flashcard 3D" Foreground="#38BDF8" FontWeight="ExtraBold" FontSize="16" VerticalAlignment="Center"/>
-                    <Border Background="#1E293B" CornerRadius="6" Padding="8,2" Margin="16,0,0,0" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding CurrentUser.Role}" Foreground="#93C5FD" FontWeight="Bold" FontSize="12"/>
-                    </Border>
-                    <TextBlock Text="{Binding CurrentUser.Name}" Foreground="White" FontWeight="SemiBold" FontSize="14" Margin="12,0,0,0" VerticalAlignment="Center"/>
-                    <TextBlock Text="{Binding CurrentUser.Email}" Foreground="#94A3B8" Margin="8,0,0,0" VerticalAlignment="Center"/>
-                </StackPanel>
-                <Button Content="Đăng xuất" Command="{Binding LogoutCommand}" DockPanel.Dock="Right" Padding="14,6" Background="#334155"/>
-            </DockPanel>
-        </Border>
-
-        <!-- Nội dung chính phân theo vai trò -->
-        <TabControl Grid.Row="1" Margin="12" Visibility="{Binding IsLoggedIn, Converter={StaticResource BooleanToVisibilityConverter}}" SelectedIndex="{Binding ActiveTabIndex}" Background="Transparent" BorderThickness="0">
-            <!-- TAB SINH VIÊN (TRỌNG TÂM F3 FLASHCARD 3D) -->
-            <TabItem Header="📖 Sinh viên · Flashcard 3D (Trọng tâm F3)" Visibility="{Binding IsStudent, Converter={StaticResource BooleanToVisibilityConverter}}">
-                <Grid Margin="6">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-
-                    <!-- HEADER KHU VỰC HỌC TẬP & TIẾN ĐỘ F3 -->
-                    <Border Grid.Row="0" Background="#FF0F172A" CornerRadius="12" Padding="16,12" Margin="0,0,0,10" BorderBrush="#1E293B" BorderThickness="1">
-                        <DockPanel LastChildFill="False">
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <TextBlock Text="Bộ thẻ:" Foreground="#94A3B8" FontSize="15" VerticalAlignment="Center"/>
-                                <TextBlock Text="{Binding FlashcardSession.TopicTitle}" Foreground="#F8FAFC" FontSize="18" FontWeight="Bold" Margin="8,0,0,0" VerticalAlignment="Center"/>
-                                <Border Background="#0284C7" CornerRadius="6" Padding="8,2" Margin="10,0,0,0" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding FlashcardSession.TopicLevel}" Foreground="White" FontWeight="Bold" FontSize="12"/>
-                                </Border>
+            <!-- CỘT TRÁI: SIDEBAR ĐIỀU HƯỚNG KIỂU DUOLINGO -->
+            <Border Grid.Column="0" Background="#FFFFFF" BorderBrush="#E5E5E5" BorderThickness="0,0,2,0" Padding="14,18">
+                <DockPanel>
+                    <!-- Brand Logo -->
+                    <StackPanel DockPanel.Dock="Top" Margin="6,0,6,22">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Border Width="38" Height="38" CornerRadius="12" Background="#58CC02" BorderBrush="#58A700" BorderThickness="0,0,0,3" Margin="0,0,10,0">
+                                <TextBlock Text="🦉" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="LTM Lingo" FontSize="21" FontWeight="ExtraBold" Foreground="#58CC02"/>
+                                <TextBlock Text="ENGLISH 3D" FontSize="10" FontWeight="ExtraBold" Foreground="#AFAFAF"/>
                             </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
 
-                            <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding FlashcardSession.ProgressSummary}" Foreground="#34D399" FontWeight="Bold" FontSize="14" VerticalAlignment="Center"/>
-                                <Border Background="#1E293B" CornerRadius="999" Padding="10,4" Margin="12,0,0,0" VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding FlashcardSession.ProgressText}" Foreground="#93C5FD" FontSize="13" FontWeight="Bold"/>
-                                            </Border>
-                                            <ProgressBar Value="{Binding FlashcardSession.ProgressPercentage, Mode=OneWay}" Minimum="0" Maximum="100" Width="140" Height="8" Margin="14,0,0,0" VerticalAlignment="Center"/>
-                                        </StackPanel>
-                                    </DockPanel>
-                    </Border>
+                    <!-- User Profile + Logout ở chân Sidebar -->
+                    <StackPanel DockPanel.Dock="Bottom" Margin="0,14,0,0">
+                        <Border Background="#F7F7F7" BorderBrush="#E5E5E5" BorderThickness="2" CornerRadius="14" Padding="12,10" Margin="0,0,0,10">
+                            <StackPanel>
+                                <DockPanel>
+                                    <Border Background="#DDF4FF" CornerRadius="6" Padding="6,2" DockPanel.Dock="Right">
+                                        <TextBlock Text="{Binding CurrentUser.Role}" Foreground="#1899D6" FontWeight="ExtraBold" FontSize="10"/>
+                                    </Border>
+                                    <TextBlock Text="{Binding CurrentUser.Name}" FontWeight="ExtraBold" FontSize="13" Foreground="#3C3C3C" TextTrimming="CharacterEllipsis"/>
+                                </DockPanel>
+                                <TextBlock Text="{Binding CurrentUser.Email}" Foreground="#777777" FontSize="11" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </Border>
+                        <Button Content="ĐĂNG XUẤT" Command="{Binding LogoutCommand}" Style="{StaticResource DuoOutlineButton}" Foreground="#777777"/>
+                    </StackPanel>
 
-                    <!-- KHÔNG GIAN HỌC CHÍNH (CỘT TRÁI: F2 CHỦ ĐỀ | CỘT PHẢI: F3 FLASHCARD 3D) -->
-                    <Grid Grid.Row="1">
+                    <!-- MENU NAVIGATION: STUDENT -->
+                    <StackPanel Visibility="{Binding IsStudent, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <RadioButton GroupName="NavMenu" Style="{StaticResource DuoNavRadioButton}"
+                                     IsChecked="{Binding CurrentNavPage, Converter={StaticResource EqualityToBooleanConverter}, ConverterParameter=LearningPath}"
+                                     Command="{Binding NavigateCommand}" CommandParameter="LearningPath">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="🗺️" FontSize="18" Margin="0,0,12,0"/>
+                                <TextBlock Text="HỌC TẬP" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+
+                        <RadioButton GroupName="NavMenu" Style="{StaticResource DuoNavRadioButton}"
+                                     IsChecked="{Binding CurrentNavPage, Converter={StaticResource EqualityToBooleanConverter}, ConverterParameter=Flashcards}"
+                                     Command="{Binding NavigateCommand}" CommandParameter="Flashcards">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="🃏" FontSize="18" Margin="0,0,12,0"/>
+                                <TextBlock Text="FLASHCARD 3D" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+
+                        <RadioButton GroupName="NavMenu" Style="{StaticResource DuoNavRadioButton}"
+                                     IsChecked="{Binding CurrentNavPage, Converter={StaticResource EqualityToBooleanConverter}, ConverterParameter=Assessment}"
+                                     Command="{Binding NavigateCommand}" CommandParameter="Assessment">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="📝" FontSize="18" Margin="0,0,12,0"/>
+                                <TextBlock Text="KHẢO THÍ" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+
+                        <RadioButton GroupName="NavMenu" Style="{StaticResource DuoNavRadioButton}"
+                                     IsChecked="{Binding CurrentNavPage, Converter={StaticResource EqualityToBooleanConverter}, ConverterParameter=Results}"
+                                     Command="{Binding NavigateCommand}" CommandParameter="Results">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="🏆" FontSize="18" Margin="0,0,12,0"/>
+                                <TextBlock Text="KẾT QUẢ" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+
+                        <RadioButton GroupName="NavMenu" Style="{StaticResource DuoNavRadioButton}"
+                                     IsChecked="{Binding CurrentNavPage, Converter={StaticResource EqualityToBooleanConverter}, ConverterParameter=Consultations}"
+                                     Command="{Binding NavigateCommand}" CommandParameter="Consultations">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="🎯" FontSize="18" Margin="0,0,12,0"/>
+                                <TextBlock Text="TƯ VẤN" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+                    </StackPanel>
+
+                    <!-- MENU NAVIGATION: EXPERT -->
+                    <StackPanel Visibility="{Binding IsExpert, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <RadioButton GroupName="NavMenu" Style="{StaticResource DuoNavRadioButton}"
+                                     IsChecked="{Binding CurrentNavPage, Converter={StaticResource EqualityToBooleanConverter}, ConverterParameter=ExpertGenerate}"
+                                     Command="{Binding NavigateCommand}" CommandParameter="ExpertGenerate">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="🤖" FontSize="18" Margin="0,0,12,0"/>
+                                <TextBlock Text="SINH ĐỀ AI" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+
+                        <RadioButton GroupName="NavMenu" Style="{StaticResource DuoNavRadioButton}"
+                                     IsChecked="{Binding CurrentNavPage, Converter={StaticResource EqualityToBooleanConverter}, ConverterParameter=ExpertManage}"
+                                     Command="{Binding NavigateCommand}" CommandParameter="ExpertManage">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="📚" FontSize="18" Margin="0,0,12,0"/>
+                                <TextBlock Text="QUẢN LÝ ĐỀ THI" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+
+                        <RadioButton GroupName="NavMenu" Style="{StaticResource DuoNavRadioButton}"
+                                     IsChecked="{Binding CurrentNavPage, Converter={StaticResource EqualityToBooleanConverter}, ConverterParameter=ExpertGrading}"
+                                     Command="{Binding NavigateCommand}" CommandParameter="ExpertGrading">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="✅" FontSize="18" Margin="0,0,12,0"/>
+                                <TextBlock Text="CHẤM THI CEFR" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+
+                        <RadioButton GroupName="NavMenu" Style="{StaticResource DuoNavRadioButton}"
+                                     IsChecked="{Binding CurrentNavPage, Converter={StaticResource EqualityToBooleanConverter}, ConverterParameter=ExpertConsult}"
+                                     Command="{Binding NavigateCommand}" CommandParameter="ExpertConsult">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="📊" FontSize="18" Margin="0,0,12,0"/>
+                                <TextBlock Text="TIẾN ĐỘ &amp; TƯ VẤN" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+                    </StackPanel>
+
+                    <!-- MENU NAVIGATION: ADMIN -->
+                    <StackPanel Visibility="{Binding IsAdmin, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <RadioButton GroupName="NavMenu" Style="{StaticResource DuoNavRadioButton}"
+                                     IsChecked="{Binding CurrentNavPage, Converter={StaticResource EqualityToBooleanConverter}, ConverterParameter=AdminDashboard}"
+                                     Command="{Binding NavigateCommand}" CommandParameter="AdminDashboard">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="⚙️" FontSize="18" Margin="0,0,12,0"/>
+                                <TextBlock Text="QUẢN TRỊ" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+
+            <!-- CỘT GIỮA: KHÔNG GIAN LÀM VIỆC CHÍNH -->
+            <Grid Grid.Column="1" Background="#FFFFFF" Margin="18,16">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- STUDENT VIEWS -->
+                <Grid Grid.Row="0" Visibility="{Binding IsStudent, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <student:LearningPathView Visibility="{Binding CurrentNavPage, Converter={StaticResource EqualityToVisibilityConverter}, ConverterParameter=LearningPath}"/>
+                    <student:FlashcardSessionView Visibility="{Binding CurrentNavPage, Converter={StaticResource EqualityToVisibilityConverter}, ConverterParameter=Flashcards}"/>
+                    <student:AssessmentView Visibility="{Binding CurrentNavPage, Converter={StaticResource EqualityToVisibilityConverter}, ConverterParameter=Assessment}"/>
+                    <student:ResultsView Visibility="{Binding CurrentNavPage, Converter={StaticResource EqualityToVisibilityConverter}, ConverterParameter=Results}"/>
+                    <student:ConsultationsView Visibility="{Binding CurrentNavPage, Converter={StaticResource EqualityToVisibilityConverter}, ConverterParameter=Consultations}"/>
+                </Grid>
+
+                <!-- EXPERT VIEW -->
+                <expert:ExpertWorkspaceView Grid.Row="0" Visibility="{Binding IsExpert, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+
+                <!-- ADMIN VIEW -->
+                <admin:AdminWorkspaceView Grid.Row="0" Visibility="{Binding IsAdmin, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+
+                <!-- THANH TRẠNG THÁI CHUNG (DÀNH CHO EXPERT/ADMIN HOẶC THÔNG BÁO NHANH) -->
+                <Border Grid.Row="1" Background="#F7F7F7" BorderBrush="#E5E5E5" BorderThickness="1.5" CornerRadius="12" Padding="12,7" Margin="0,10,0,0">
+                    <TextBlock Text="{Binding StatusMessage}" Foreground="#3C3C3C" FontWeight="SemiBold" FontSize="12.5"/>
+                </Border>
+            </Grid>
+
+            <!-- CỘT PHẢI: GAMIFICATION RAIL (CHỈ HIỂN THỊ CHO SINH VIÊN) -->
+            <Border Grid.Column="2" Width="285" Background="#FFFFFF" BorderBrush="#E5E5E5" BorderThickness="2,0,0,0" Padding="16,18"
+                    Visibility="{Binding IsStudent, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <StackPanel>
+                    <!-- THANH STREAK / XP / CEFR -->
+                    <Grid Margin="0,0,0,16">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="320"/>
-                            <ColumnDefinition Width="12"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="8"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
 
-                        <!-- CỘT TRÁI: F2 QUẢN LÝ CHỦ ĐỀ & CHỌN BỘ THẺ -->
-                        <Border Grid.Column="0" Background="#FF0F172A" CornerRadius="12" Padding="14" BorderBrush="#1E293B" BorderThickness="1">
-                            <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="*"/>
-                                    <RowDefinition Height="Auto"/>
-                                </Grid.RowDefinitions>
-
-                                <TextBlock Grid.Row="0" Text="Chủ đề từ vựng (F2)" Foreground="White" FontWeight="Bold" FontSize="16" Margin="0,0,0,10"/>
-
-                                <!-- Sinh từ vựng bằng AI Gemini -->
-                                <StackPanel Grid.Row="1" Margin="0,0,0,10">
-                                    <TextBlock Text="Tạo chủ đề mới bằng AI:" Foreground="#94A3B8" FontSize="12" Margin="0,0,0,4"/>
-                                    <DockPanel Margin="0,0,0,6">
-                                        <TextBox Text="{Binding NewTopicName, UpdateSourceTrigger=PropertyChanged}" ToolTip="Nhập tên chủ đề (VD: Travel, AI, Tech)"/>
-                                        <ComboBox Width="65" Margin="6,0,0,0" ItemsSource="{Binding CefrLevels}" SelectedItem="{Binding SelectedCefr}" ToolTip="Cấp độ CEFR"/>
-                                    </DockPanel>
-                                    <Button Content="✨ Sinh 15 từ mới bằng AI" Command="{Binding GenerateTopicCommand}"
-                                            Background="#0284C7" Foreground="White" FontWeight="Bold" Padding="10,7" Margin="0,0,0,6"/>
-                                    <Button Content="↻ Tải lại danh sách" Command="{Binding LoadTopicsCommand}" Padding="8,5" Background="#1E293B"/>
-                                </StackPanel>
-
-                                <!-- Danh sách chủ đề đã tạo -->
-                                <ListBox Grid.Row="2" ItemsSource="{Binding Topics}" SelectedItem="{Binding SelectedTopic}"
-                                         Background="#FF0B1120" Foreground="White" BorderBrush="#1E293B" BorderThickness="1"
-                                         ScrollViewer.VerticalScrollBarVisibility="Auto" Margin="0,4,0,10">
-                                    <ListBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <Border Padding="8,6" CornerRadius="6" Margin="2">
-                                                <DockPanel>
-                                                    <Border Background="#0369A1" CornerRadius="4" Padding="6,2" DockPanel.Dock="Right">
-                                                        <TextBlock Text="{Binding Level}" Foreground="White" FontWeight="Bold" FontSize="11"/>
-                                                    </Border>
-                                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Foreground="#F8FAFC"/>
-                                                </DockPanel>
-                                            </Border>
-                                        </DataTemplate>
-                                    </ListBox.ItemTemplate>
-                                </ListBox>
-
-                                <!-- Nút mở chủ đề để học -->
-                                <Button Grid.Row="3" Content="▶ Mở bộ thẻ để học" Command="{Binding OpenTopicCommand}"
-                                        Background="#059669" Foreground="White" FontWeight="Bold" FontSize="14" Padding="12,9"/>
-                            </Grid>
+                        <Border Grid.Column="0" Background="#FFF0D9" BorderBrush="#FF9600" BorderThickness="1.5" CornerRadius="12" Padding="8,7">
+                            <StackPanel HorizontalAlignment="Center">
+                                <TextBlock Text="🔥 STREAK" Foreground="#CC7800" FontSize="10" FontWeight="ExtraBold" HorizontalAlignment="Center"/>
+                                <TextBlock Text="{Binding StreakDays}" Foreground="#FF9600" FontSize="18" FontWeight="ExtraBold" HorizontalAlignment="Center"/>
+                            </StackPanel>
                         </Border>
 
-                        <!-- CỘT PHẢI: KHÔNG GIAN FLASHCARD 3D TRỌNG TÂM (F3) -->
-                        <Border Grid.Column="2" Background="#FF0B1120" CornerRadius="12" Padding="14" BorderBrush="#1E293B" BorderThickness="1">
-                            <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="*"/>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                </Grid.RowDefinitions>
+                        <Border Grid.Column="2" Background="#FFF7D6" BorderBrush="#FFC800" BorderThickness="1.5" CornerRadius="12" Padding="8,7">
+                            <StackPanel HorizontalAlignment="Center">
+                                <TextBlock Text="⚡ XP" Foreground="#CC7800" FontSize="10" FontWeight="ExtraBold" HorizontalAlignment="Center"/>
+                                <TextBlock Text="{Binding TotalXp}" Foreground="#E5A400" FontSize="18" FontWeight="ExtraBold" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
 
-                                <!-- BỘ LỌC VÀ TIỆN ÍCH HỌC TẬP (F3.4) -->
-                                <DockPanel Grid.Row="0" Margin="0,0,0,8" LastChildFill="False">
-                                    <!-- Lọc theo trạng thái thẻ -->
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <TextBlock Text="Bộ lọc:" Foreground="#64748B" FontSize="13" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                                        <Button Content="Tất cả thẻ" Command="{Binding FlashcardSession.FilterAllCommand}"
-                                                Padding="10,5" Margin="0,0,6,0" Background="#1E293B"/>
-                                        <Button Content="⏳ Cần ôn" Command="{Binding FlashcardSession.FilterUnmasteredCommand}"
-                                                Padding="10,5" Margin="0,0,6,0" Background="#1E293B"/>
-                                        <Button Content="✓ Đã thuộc" Command="{Binding FlashcardSession.FilterMasteredCommand}"
-                                                Padding="10,5" Background="#1E293B"/>
-                                    </StackPanel>
-
-                                    <!-- Tiện ích xáo trộn & reset -->
-                                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center">
-                                        <Button Content="🔀 Xáo thẻ (S)" Command="{Binding FlashcardSession.ShuffleCommand}"
-                                                Padding="10,5" Margin="0,0,6,0" Background="#1E293B" ToolTip="Xáo trộn ngẫu nhiên danh sách thẻ"/>
-                                        <Button Content="↺ Đặt lại (R)" Command="{Binding FlashcardSession.ResetCommand}"
-                                                Padding="10,5" Background="#1E293B" ToolTip="Quay về thẻ đầu tiên"/>
-                                    </StackPanel>
-                                </DockPanel>
-
-                                <!-- THẺ FLASHCARD 3D TƯƠNG TÁC (F3.2) -->
-                                <controls:Card3DView Grid.Row="1" DataContext="{Binding FlashcardSession}" VerticalAlignment="Center"/>
-
-                                <!-- THANH NÚT ĐIỀU KHIỂN CHÍNH (F3.3 & F3.4) -->
-                                <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,12,0,8">
-                                    <Button Content="◀ Trước (←)" Width="110" Margin="5" Padding="10" Command="{Binding FlashcardSession.PrevCommand}" ToolTip="Xem thẻ trước (Phím mũi tên trái)"/>
-                                    <Button Content="↻ Lật thẻ (Space)" Width="135" Margin="5" Padding="10" Command="{Binding FlashcardSession.FlipCommand}"
-                                            Background="#0284C7" Foreground="White" FontWeight="Bold" ToolTip="Lật mặt trước/sau (Phím Space hoặc click thẻ)"/>
-                                    <Button Content="🔊 Phát âm (P)" Width="115" Margin="5" Padding="10" Command="{Binding FlashcardSession.PronounceCommand}" ToolTip="Nghe phát âm chuẩn TTS (Phím P)"/>
-                                    <Button Content="📋 Sao chép (C)" Width="115" Margin="5" Padding="10" Command="{Binding FlashcardSession.CopyCommand}" ToolTip="Sao chép từ vựng vào Clipboard (Phím C)"/>
-                                    <Button Content="✓ Đã thuộc (M)" Width="125" Margin="5" Padding="10" Command="{Binding FlashcardSession.MarkMasteredCommand}"
-                                            Background="#15803D" Foreground="White" FontWeight="Bold" ToolTip="Đánh dấu đã thuộc / chuyển cần ôn (Phím M)"/>
-                                    <Button Content="Sau (→) ▶" Width="110" Margin="5" Padding="10" Command="{Binding FlashcardSession.NextCommand}" ToolTip="Xem thẻ tiếp theo (Phím mũi tên phải)"/>
-                                </StackPanel>
-
-                                <!-- BẢNG PHÍM TẮT DÀNH CHO DESKTOP -->
-                                <Border Grid.Row="3" Background="#FF020617" CornerRadius="8" Padding="12,5" BorderBrush="#1E293B" BorderThickness="1">
-                                    <TextBlock Text="⌨ Phím tắt: [Space] Lật thẻ  •  [←] [→] Thẻ trước/sau  •  [P] Phát âm  •  [M] Đã thuộc  •  [C] Sao chép  •  [S] Xáo thẻ  •  [R] Đặt lại"
-                                               Foreground="#64748B" FontSize="12" HorizontalAlignment="Center"/>
-                                </Border>
-                            </Grid>
+                        <Border Grid.Column="4" Background="#DDF4FF" BorderBrush="#84D8FF" BorderThickness="1.5" CornerRadius="12" Padding="8,7">
+                            <StackPanel HorizontalAlignment="Center">
+                                <TextBlock Text="🎯 CEFR" Foreground="#1899D6" FontSize="10" FontWeight="ExtraBold" HorizontalAlignment="Center"/>
+                                <TextBlock Text="{Binding CurrentCefrDisplay}" Foreground="#1CB0F6" FontSize="18" FontWeight="ExtraBold" HorizontalAlignment="Center"/>
+                            </StackPanel>
                         </Border>
                     </Grid>
 
-                    <!-- THANH TRẠNG THÁI HỆ THỐNG -->
-                    <Border Grid.Row="2" Background="#FF0F172A" CornerRadius="8" Padding="10" Margin="0,10,0,0" BorderBrush="#1E293B" BorderThickness="1">
-                        <TextBlock Text="{Binding StatusMessage}" Foreground="#E2E8F0" FontWeight="Medium"/>
-                    </Border>
-                </Grid>
-            </TabItem>
-
-        <!-- TAB KHẢO THÍ VÀ CHẤM ĐIỂM (EXPERT / STUDENT) -->
-        <TabItem Header="Khảo thí &amp; Chấm thi" Visibility="{Binding IsAssessmentUser, Converter={StaticResource BooleanToVisibilityConverter}}">
-        <Grid Margin="12">
-          <!-- ======================================================== -->
-          <!-- 1. GIAO DIỆN DÀNH CHO SINH VIÊN (STUDENT)                -->
-          <!-- ======================================================== -->
-          <TabControl Visibility="{Binding IsStudent, Converter={StaticResource BooleanToVisibilityConverter}}" Background="#FF0F172A" BorderBrush="#FF334155">
-            <!-- TAB 1: LÀM BÀI THI -->
-            <TabItem Header="Làm bài thi">
-              <Grid Margin="10">
-                <!-- ============================================== -->
-                <!-- TRƯỜNG HỢP 1: CHƯA BẮT ĐẦU LÀM BÀI (DANH SÁCH) -->
-                <!-- ============================================== -->
-                <Grid Visibility="{Binding IsNotTakingExam, Converter={StaticResource BooleanToVisibilityConverter}}">
-                  <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="380"/>
-                    <ColumnDefinition Width="12"/>
-                    <ColumnDefinition Width="*"/>
-                  </Grid.ColumnDefinitions>
-
-                <!-- Cột trái: Danh sách bài tập được giao -->
-                <Border Grid.Column="0" Background="#FF1E293B" CornerRadius="10" Padding="12">
-                  <DockPanel>
-                    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
-                      <TextBlock Text="Đề thi được giao" FontSize="18" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
-                      <Button Content="Tải lại" Command="{Binding RefreshF4Command}" DockPanel.Dock="Right" Padding="10,4" Background="#FF334155" Foreground="White"/>
-                    </DockPanel>
-                    <ListBox ItemsSource="{Binding Assignments}" SelectedItem="{Binding SelectedAssignment}" Background="#FF0F172A" BorderBrush="#FF334155" Foreground="White">
-                      <ListBox.ItemTemplate>
-                        <DataTemplate>
-                          <Border Background="#FF1E293B" CornerRadius="8" Padding="10" Margin="0,4" BorderBrush="#FF334155" BorderThickness="1">
-                            <StackPanel>
-                              <TextBlock Text="{Binding Title}" FontWeight="Bold" FontSize="14" Foreground="White" TextWrapping="Wrap"/>
-                              <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                                <Border Background="#FF3B82F6" CornerRadius="4" Padding="6,2" Margin="0,0,6,0">
-                                  <TextBlock Text="{Binding Skill}" Foreground="White" FontSize="11" FontWeight="SemiBold"/>
-                                </Border>
-                                <Border Background="#FF10B981" CornerRadius="4" Padding="6,2" Margin="0,0,6,0">
-                                  <TextBlock Text="{Binding Target_Level}" Foreground="White" FontSize="11" FontWeight="Bold"/>
-                                </Border>
-                                <Border Background="#FF6366F1" CornerRadius="4" Padding="6,2" Margin="0,0,6,0">
-                                  <TextBlock Text="{Binding Duration_Minutes, StringFormat='{}{0} phút'}" Foreground="White" FontSize="11"/>
-                                </Border>
-                              </StackPanel>
-                              <TextBlock Text="{Binding Due_Date, StringFormat='Hạn chót: {0}'}" Foreground="#94A3B8" FontSize="11" Margin="0,6,0,0"/>
-                            </StackPanel>
-                          </Border>
-                        </DataTemplate>
-                      </ListBox.ItemTemplate>
-                    </ListBox>
-                  </DockPanel>
-                </Border>
-
-                <!-- Cột phải: Khu vực làm bài chi tiết -->
-                <Border Grid.Column="2" Background="#FF1E293B" CornerRadius="10" Padding="14">
-                  <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel>
-                      <!-- Khi đã chọn bài -->
-                      <Border Background="#FF0F172A" CornerRadius="8" Padding="20" Margin="0,0,0,10"
-                              Visibility="{Binding HasSelectedAssignment, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <!-- MỤC TIÊU HÔM NAY -->
+                    <Border Style="{StaticResource DuoCardBorder}" Margin="0,0,0,14">
                         <StackPanel>
-                          <DockPanel>
-                            <TextBlock Text="{Binding SelectedAssignment.Title}" FontSize="20" FontWeight="Bold" Foreground="White" TextWrapping="Wrap"/>
-                            <Border Background="#FF2563EB" CornerRadius="6" Padding="8,4" DockPanel.Dock="Right" VerticalAlignment="Center">
-                              <TextBlock Text="{Binding SelectedAssignment.Skill}" Foreground="White" FontWeight="Bold"/>
-                            </Border>
-                          </DockPanel>
-                          <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                            <TextBlock Text="{Binding SelectedAssignment.Target_Level, StringFormat='Cấp độ mục tiêu: {0}'}" Foreground="#93C5FD" FontWeight="SemiBold" Margin="0,0,16,0"/>
-                            <TextBlock Text="{Binding SelectedAssignment.Duration_Minutes, StringFormat='Thời gian: {0} phút'}" Foreground="#FDE047" FontWeight="SemiBold" Margin="0,0,16,0"/>
-                            <TextBlock Text="{Binding SelectedAssignment.Due_Date, StringFormat='Hạn nộp: {0}'}" Foreground="#CBD5E1"/>
-                          </StackPanel>
-
-                          <Separator Background="#FF334155" Margin="0,10"/>
-
-                          <!-- DÀNH CHO BÀI THI KHẢO THÍ AI (SKILL: EXAM) -->
-                          <StackPanel Visibility="{Binding IsExamSkillSelected, Converter={StaticResource BooleanToVisibilityConverter}}">
-                            <Border Background="#FF1E293B" CornerRadius="8" Padding="16" BorderBrush="#FF0284C7" BorderThickness="1" Margin="0,0,0,16">
-                              <StackPanel>
-                                <TextBlock Text="📌 BÀI THI KHẢO THÍ ĐÁNH GIÁ NĂNG LỰC TIẾNG ANH" FontWeight="Bold" FontSize="16" Foreground="#38BDF8" Margin="0,0,0,8"/>
-                                <TextBlock Text="• Cấu trúc: Đề thi gồm 4 phần: Biển báo &amp; Thông báo, Trắc nghiệm từ vựng, Đọc điền khuyết (Cloze Test) và Sắp xếp trật tự từ." Foreground="#CBD5E1" FontSize="13" Margin="0,0,0,4" LineHeight="20"/>
-                                <TextBlock Text="• Chấm điểm: Hệ thống sẽ tự động chấm điểm ngay sau khi nộp bài." Foreground="#34D399" FontSize="13" Margin="0,0,0,4"/>
-                                <TextBlock Text="• Đồng hồ đếm ngược sẽ kích hoạt ngay khi bạn bấm 'BẮT ĐẦU LÀM BÀI'." Foreground="#FBBF24" FontSize="13" Margin="0,0,0,12"/>
-
-                                <TextBlock Text="Hướng dẫn của Giảng viên:" Foreground="#94A3B8" FontSize="12" Margin="0,0,0,2"/>
-                                <TextBlock Text="{Binding SelectedAssignment.Instructions}" TextWrapping="Wrap" Foreground="#F1F5F9" FontSize="13" LineHeight="18" Margin="0,0,0,16"/>
-
-                                <Button Content="🚀 BẮT ĐẦU LÀM BÀI THI" Command="{Binding StartExamCommand}"
-                                        Height="50" Background="#FF059669" Foreground="White" FontSize="16" FontWeight="Bold" Cursor="Hand" Margin="0,8,0,0"/>
-                              </StackPanel>
-                            </Border>
-                          </StackPanel>
-
-                          <!-- DÀNH CHO BÀI TẬP TRUYỀN THỐNG (WRITING/SPEAKING...) -->
-                          <StackPanel Visibility="{Binding IsNotExamSkillSelected, Converter={StaticResource BooleanToVisibilityConverter}}">
-                            <!-- Nội dung đề bài / Bài đọc -->
-                            <TextBlock Text="ĐỀ BÀI &amp; YÊU CẦU:" FontWeight="Bold" Foreground="#38BDF8" Margin="0,0,0,4"/>
-                            <Border Background="#FF1E293B" CornerRadius="6" Padding="10" Margin="0,0,0,8" BorderBrush="#FF475569" BorderThickness="1">
-                              <TextBlock Text="{Binding SelectedAssignment.Instructions}" TextWrapping="Wrap" Foreground="#F1F5F9" FontSize="13" LineHeight="18"/>
-                            </Border>
-
-                            <Border Background="#FF1E293B" CornerRadius="6" Padding="10" Margin="0,0,0,12" BorderBrush="#FF475569" BorderThickness="1"
-                                    Visibility="{Binding SelectedAssignment.Content, Converter={StaticResource BooleanToVisibilityConverter}}">
-                              <StackPanel>
-                                <TextBlock Text="Đoạn văn đọc hiểu (Reading Passage):" Foreground="#94A3B8" FontSize="11" Margin="0,0,0,4"/>
-                                <TextBlock Text="{Binding SelectedAssignment.Content}" TextWrapping="Wrap" Foreground="#F8FAFC" FontSize="13" LineHeight="20"/>
-                              </StackPanel>
-                            </Border>
-
-                            <!-- Khu vực trắc nghiệm tự động (Reading MCQs) -->
-                            <StackPanel Visibility="{Binding IsReadingSkill, Converter={StaticResource BooleanToVisibilityConverter}}" Margin="0,0,0,12">
-                              <TextBlock Text="CÂU HỎI TRẮC NGHIỆM ĐỌC HIỂU (Hệ thống chấm tự động tối đa 5.0đ):" FontWeight="Bold" Foreground="#38BDF8" Margin="0,0,0,6"/>
-                              <Border Background="#FF0F172A" CornerRadius="6" Padding="10" BorderBrush="#FF475569" BorderThickness="1">
-                                <StackPanel>
-                                  <TextBlock Text="Câu 1: What is the main idea of the passage?" Foreground="White" Margin="0,0,0,4"/>
-                                  <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                    <RadioButton Content="A" GroupName="Q1" IsChecked="{Binding ReadingQ1A}" Foreground="White" Margin="0,0,16,0"/>
-                                    <RadioButton Content="B" GroupName="Q1" IsChecked="{Binding ReadingQ1B}" Foreground="White" Margin="0,0,16,0"/>
-                                    <RadioButton Content="C" GroupName="Q1" IsChecked="{Binding ReadingQ1C}" Foreground="White" Margin="0,0,16,0"/>
-                                    <RadioButton Content="D" GroupName="Q1" IsChecked="{Binding ReadingQ1D}" Foreground="White"/>
-                                  </StackPanel>
-
-                                  <TextBlock Text="Câu 2: According to paragraph 2, which statement is TRUE?" Foreground="White" Margin="0,0,0,4"/>
-                                  <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                    <RadioButton Content="A" GroupName="Q2" IsChecked="{Binding ReadingQ2A}" Foreground="White" Margin="0,0,16,0"/>
-                                    <RadioButton Content="B" GroupName="Q2" IsChecked="{Binding ReadingQ2B}" Foreground="White" Margin="0,0,16,0"/>
-                                    <RadioButton Content="C" GroupName="Q2" IsChecked="{Binding ReadingQ2C}" Foreground="White" Margin="0,0,16,0"/>
-                                    <RadioButton Content="D" GroupName="Q2" IsChecked="{Binding ReadingQ2D}" Foreground="White"/>
-                                  </StackPanel>
-
-                                  <TextBlock Text="Câu 3: The word in bold is closest in meaning to:" Foreground="White" Margin="0,0,0,4"/>
-                                  <StackPanel Orientation="Horizontal">
-                                    <RadioButton Content="A" GroupName="Q3" IsChecked="{Binding ReadingQ3A}" Foreground="White" Margin="0,0,16,0"/>
-                                    <RadioButton Content="B" GroupName="Q3" IsChecked="{Binding ReadingQ3B}" Foreground="White" Margin="0,0,16,0"/>
-                                    <RadioButton Content="C" GroupName="Q3" IsChecked="{Binding ReadingQ3C}" Foreground="White" Margin="0,0,16,0"/>
-                                    <RadioButton Content="D" GroupName="Q3" IsChecked="{Binding ReadingQ3D}" Foreground="White"/>
-                                  </StackPanel>
-                                </StackPanel>
-                              </Border>
-                            </StackPanel>
-
-                            <!-- Phần bài làm: Speaking (Audio URL & Notes) -->
-                            <StackPanel Visibility="{Binding IsSpeakingSkill, Converter={StaticResource BooleanToVisibilityConverter}}" Margin="0,0,0,12">
-                              <TextBlock Text="Liên kết tệp ghi âm (Audio URL - Google Drive/Dropbox/Vocaroo):" Foreground="#CBD5E1" Margin="0,0,0,4"/>
-                              <TextBox Text="{Binding StudentAudioUrl, UpdateSourceTrigger=PropertyChanged}" Background="#FF0F172A" Foreground="White" BorderBrush="#FF475569" Padding="8" Margin="0,0,0,8"/>
-                              <TextBlock Text="Ghi chú bài nói / Tóm tắt ý tưởng chính:" Foreground="#CBD5E1" Margin="0,0,0,4"/>
-                              <TextBox Text="{Binding StudentSpeakingNotes, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" MinHeight="100" TextWrapping="Wrap" Background="#FF0F172A" Foreground="White" BorderBrush="#FF475569" Padding="8"/>
-                            </StackPanel>
-
-                            <!-- Phần bài làm: Writing / Essay -->
-                            <StackPanel Visibility="{Binding IsWritingSkill, Converter={StaticResource BooleanToVisibilityConverter}}" Margin="0,0,0,12">
-                              <TextBlock Text="Câu chủ đề (Topic Sentence):" Foreground="#CBD5E1" Margin="0,0,0,4"/>
-                              <TextBox Text="{Binding StudentTopicSentence, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" MinHeight="50" TextWrapping="Wrap" Background="#FF0F172A" Foreground="White" BorderBrush="#FF475569" Padding="8" Margin="0,0,0,8"/>
-                              <TextBlock Text="Bài viết hoàn chỉnh (Essay / Writing Submission):" Foreground="#CBD5E1" Margin="0,0,0,4"/>
-                              <TextBox Text="{Binding StudentSubmissionContent, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" MinHeight="160" TextWrapping="Wrap" Background="#FF0F172A" Foreground="White" BorderBrush="#FF475569" Padding="8"/>
-                            </StackPanel>
-
-                            <!-- Nút nộp bài tập -->
-                            <Button Content="NỘP BÀI TẬP" Command="{Binding SubmitAssignmentCommand}"
-                                    Height="42" Background="#FF059669" Foreground="White" FontWeight="Bold" FontSize="14" Cursor="Hand" Margin="0,10,0,0"/>
-                          </StackPanel>
-                        </StackPanel>
-                      </Border>
-                    </StackPanel>
-                  </ScrollViewer>
-                </Border>
-              </Grid>
-
-              <!-- ============================================== -->
-              <!-- TRƯỜNG HỢP 2: ĐANG TRONG PHIÊN LÀM BÀI THI     -->
-              <!-- ============================================== -->
-              <Grid Visibility="{Binding IsTakingExam, Converter={StaticResource BooleanToVisibilityConverter}}">
-                <Grid.RowDefinitions>
-                  <RowDefinition Height="Auto"/>
-                  <RowDefinition Height="Auto"/>
-                  <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
-
-                <!-- Thanh công cụ trên cùng: Tiêu đề, Đồng hồ đếm ngược, Nút nộp bài -->
-                <Border Grid.Row="0" Background="#FF1E293B" CornerRadius="10" Padding="16,10" Margin="0,0,0,10" BorderBrush="#FF334155" BorderThickness="1">
-                  <DockPanel LastChildFill="True">
-                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
-                      <Button Content="🚀 NỘP BÀI THI" Command="{Binding SubmitExamCommand}"
-                              Padding="20,10" Background="#FF059669" Foreground="White" FontWeight="Bold" FontSize="14" Cursor="Hand" Margin="0,0,10,0"/>
-                      <Button Content="❌ HỦY" Command="{Binding CancelExamCommand}"
-                              Padding="14,10" Background="#FFDC2626" Foreground="White" FontWeight="Bold" FontSize="13" Cursor="Hand"/>
-                    </StackPanel>
-
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                      <TextBlock Text="{Binding ActiveTakingAssignment.Title}" FontWeight="Bold" FontSize="16" Foreground="White" VerticalAlignment="Center" Margin="0,0,20,0"/>
-                      <Border Background="#FF0F172A" CornerRadius="8" Padding="12,6" BorderBrush="#FFEF4444" BorderThickness="1">
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                          <TextBlock Text="⏱ CÒN LẠI: " Foreground="#94A3B8" FontWeight="Bold" FontSize="13" VerticalAlignment="Center"/>
-                          <TextBlock Text="{Binding ExamRemainingTimeText}" Foreground="#EF4444" FontWeight="ExtraBold" FontSize="18" VerticalAlignment="Center" Margin="4,0,0,0"/>
-                        </StackPanel>
-                      </Border>
-                    </StackPanel>
-                  </DockPanel>
-                </Border>
-
-                <!-- Phiếu trả lời nhanh -->
-                <Border Grid.Row="1" Background="#FF1E293B" CornerRadius="8" Padding="12,8" Margin="0,0,0,10">
-                  <StackPanel>
-                    <TextBlock Text="Phiếu trả lời nhanh:" Foreground="#94A3B8" FontSize="11" Margin="0,0,0,6"/>
-                    <ItemsControl ItemsSource="{Binding ExamAnswerGrid}">
-                      <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                          <WrapPanel Orientation="Horizontal"/>
-                        </ItemsPanelTemplate>
-                      </ItemsControl.ItemsPanel>
-                      <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                          <Border Background="#FF0F172A" CornerRadius="4" Padding="8,4" Margin="3" BorderBrush="#FF334155" BorderThickness="1">
-                            <StackPanel Orientation="Horizontal">
-                              <TextBlock Text="{Binding QuestionNumber, StringFormat='Câu {0}: '}" Foreground="#94A3B8" FontSize="11"/>
-                              <TextBlock Text="{Binding Answer}" Foreground="#38BDF8" FontWeight="Bold" FontSize="11"/>
-                            </StackPanel>
-                          </Border>
-                        </DataTemplate>
-                      </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                  </StackPanel>
-                </Border>
-
-                <!-- Khung cuộn nội dung 4 phần câu hỏi -->
-                <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
-                  <ItemsControl ItemsSource="{Binding ExamTakingSections}">
-                    <ItemsControl.ItemTemplate>
-                      <DataTemplate>
-                        <Border Background="#FF1E293B" CornerRadius="10" Padding="16" Margin="0,0,0,16" BorderBrush="#FF334155" BorderThickness="1">
-                          <StackPanel>
-                            <!-- Tiêu đề & hướng dẫn phần thi -->
-                            <DockPanel Margin="0,0,0,4">
-                              <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="Bold" Foreground="#FDE047"/>
-                              <TextBlock Text="{Binding Points, StringFormat='{}{0:F1} điểm'}" Foreground="#34D399" DockPanel.Dock="Right" FontWeight="Bold" FontSize="13"/>
+                            <DockPanel Margin="0,0,0,10">
+                                <TextBlock Text="Mục tiêu hôm nay" FontWeight="ExtraBold" FontSize="15" Foreground="#3C3C3C"/>
+                                <TextBlock Text="{Binding DailyGoalText}" Foreground="#FF9600" FontWeight="ExtraBold" FontSize="13" DockPanel.Dock="Right"/>
                             </DockPanel>
-                            <TextBlock Text="{Binding Instructions}" Foreground="#94A3B8" FontSize="12" Margin="0,2,0,8" TextWrapping="Wrap"/>
-
-                            <!-- Đoạn văn bài đọc (Reading/Cloze passage nếu có) -->
-                            <Border Background="#FF0F172A" CornerRadius="8" Padding="14" Margin="0,0,0,12" BorderBrush="#FF334155" BorderThickness="1"
-                                    Visibility="{Binding Passage, Converter={StaticResource BooleanToVisibilityConverter}}">
-                              <TextBlock Text="{Binding Passage}" Foreground="#E2E8F0" FontSize="13" TextWrapping="Wrap" LineHeight="22"/>
-                            </Border>
-
-                            <!-- Danh sách câu hỏi trong phần thi -->
-                            <ItemsControl ItemsSource="{Binding Questions}">
-                              <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                  <Border Background="#FF0F172A" CornerRadius="8" Padding="14" Margin="0,4,0,10" BorderBrush="#FF334155" BorderThickness="1">
-                                    <StackPanel>
-                                      <!-- Header câu hỏi -->
-                                      <DockPanel Margin="0,0,0,6">
-                                        <TextBlock Text="{Binding QuestionNumber, StringFormat='Câu {0}: '}" FontWeight="Bold" Foreground="#38BDF8" FontSize="14"/>
-                                        <TextBlock Text="{Binding Points, StringFormat='({0:F1} điểm)'}" Foreground="#94A3B8" DockPanel.Dock="Right" FontSize="11"/>
-                                        <TextBlock Text="{Binding QuestionText}" FontWeight="SemiBold" Foreground="White" FontSize="13" TextWrapping="Wrap"/>
-                                      </DockPanel>
-
-                                      <!-- Biển báo nếu có -->
-                                      <Border Background="#FF1E293B" CornerRadius="6" Padding="10" Margin="0,4,0,8"
-                                              Visibility="{Binding SignIcon, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                          <TextBlock Text="⚠️ BIỂN BÁO: " Foreground="#F59E0B" FontWeight="Bold" FontSize="13" VerticalAlignment="Center"/>
-                                          <TextBlock Text="{Binding SignIcon}" Foreground="White" FontWeight="Bold" FontSize="13" VerticalAlignment="Center"/>
-                                          <TextBlock Text="{Binding SignType, StringFormat=' ({0})'}" Foreground="#94A3B8" FontSize="12" VerticalAlignment="Center" Margin="6,0,0,0"/>
-                                        </StackPanel>
-                                      </Border>
-
-                                      <!-- Dạng 1: Trắc nghiệm ABCD (Signs, Vocabulary, Cloze) -->
-                                      <StackPanel Visibility="{Binding IsMultipleChoice, Converter={StaticResource BooleanToVisibilityConverter}}" Margin="0,4,0,0">
-                                        <ItemsControl ItemsSource="{Binding Options}">
-                                          <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                              <Button Content="{Binding}"
-                                                      Command="{Binding DataContext.SelectOptionCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                      CommandParameter="{Binding}"
-                                                      HorizontalContentAlignment="Left"
-                                                      Margin="0,3" Padding="12,8"
-                                                      Background="#FF1E293B" Foreground="White" BorderBrush="#FF475569" Cursor="Hand"/>
-                                            </DataTemplate>
-                                          </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                                          <TextBlock Text="Đáp án bạn đã chọn: " Foreground="#94A3B8" FontSize="12"/>
-                                          <TextBlock Text="{Binding SelectedAnswer}" Foreground="#34D399" FontWeight="Bold" FontSize="14"/>
-                                        </StackPanel>
-                                      </StackPanel>
-
-                                      <!-- Dạng 2: Sắp xếp trật tự từ (Word Ordering) -->
-                                      <StackPanel Visibility="{Binding IsWordOrdering, Converter={StaticResource BooleanToVisibilityConverter}}" Margin="0,4,0,0">
-                                        <TextBlock Text="Bấm vào các từ bên dưới để ghép thành câu đúng:" Foreground="#94A3B8" FontSize="11" Margin="0,0,0,4"/>
-                                        <ItemsControl ItemsSource="{Binding AvailableWords}">
-                                          <ItemsControl.ItemsPanel>
-                                            <ItemsPanelTemplate>
-                                              <WrapPanel Orientation="Horizontal"/>
-                                            </ItemsPanelTemplate>
-                                          </ItemsControl.ItemsPanel>
-                                          <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                              <Button Content="{Binding}"
-                                                      Command="{Binding DataContext.AddWordCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                      CommandParameter="{Binding}"
-                                                      Margin="3" Padding="10,5" Background="#FF334155" Foreground="#38BDF8" FontWeight="SemiBold" Cursor="Hand"/>
-                                            </DataTemplate>
-                                          </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-                                        <TextBlock Text="Câu bạn đã ghép:" Foreground="#94A3B8" FontSize="11" Margin="0,8,0,2"/>
-                                        <TextBox Text="{Binding SelectedAnswer, UpdateSourceTrigger=PropertyChanged}" Background="#FF1E293B" Foreground="White" Padding="8" TextWrapping="Wrap"/>
-                                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                                          <Button Content="↩ Xóa từ cuối" Command="{Binding UndoWordCommand}" Margin="0,0,8,0" Padding="12,5" Background="#FF475569" Foreground="White"/>
-                                          <Button Content="↺ Làm lại từ đầu" Command="{Binding ResetWordsCommand}" Padding="12,5" Background="#FFDC2626" Foreground="White"/>
-                                        </StackPanel>
-                                      </StackPanel>
-                                    </StackPanel>
-                                  </Border>
-                                </DataTemplate>
-                              </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                          </StackPanel>
-                        </Border>
-                      </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                  </ItemsControl>
-                </ScrollViewer>
-              </Grid>
-            </Grid>
-          </TabItem>
-
-            <!-- TAB 2: KẾT QUẢ & LỊCH SỬ CHẤM -->
-            <TabItem Header="Kết quả &amp; Nhận xét">
-              <Grid Margin="10">
-                <Grid.ColumnDefinitions>
-                  <ColumnDefinition Width="420"/>
-                  <ColumnDefinition Width="12"/>
-                  <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-
-                <!-- Cột trái: Danh sách bài đã nộp -->
-                <Border Grid.Column="0" Background="#FF1E293B" CornerRadius="10" Padding="12">
-                  <DockPanel>
-                    <TextBlock Text="Lịch sử bài nộp của bạn" FontSize="18" FontWeight="Bold" Foreground="White" DockPanel.Dock="Top" Margin="0,0,0,10"/>
-                    <ListBox ItemsSource="{Binding StudentSubmissions}" SelectedItem="{Binding SelectedSubmission}" Background="#FF0F172A" BorderBrush="#FF334155" Foreground="White">
-                      <ListBox.ItemTemplate>
-                        <DataTemplate>
-                          <Border Background="#FF1E293B" CornerRadius="8" Padding="10" Margin="0,4" BorderBrush="#FF334155" BorderThickness="1">
-                            <StackPanel>
-                              <DockPanel>
-                                <TextBlock Text="{Binding Assignment_Title}" FontWeight="Bold" FontSize="14" Foreground="White" Width="240" TextTrimming="CharacterEllipsis"/>
-                                <Border Background="#FF059669" CornerRadius="4" Padding="6,2" DockPanel.Dock="Right" HorizontalAlignment="Right">
-                                  <TextBlock Text="{Binding Status}" Foreground="White" FontSize="11" FontWeight="Bold"/>
-                                </Border>
-                              </DockPanel>
-                              <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                                <TextBlock Text="{Binding Skill}" Foreground="#93C5FD" Margin="0,0,12,0" FontSize="11"/>
-                                <TextBlock Text="{Binding Submitted_At, StringFormat='Nộp lúc: {0}'}" Foreground="#94A3B8" FontSize="11"/>
-                              </StackPanel>
-                            </StackPanel>
-                          </Border>
-                        </DataTemplate>
-                      </ListBox.ItemTemplate>
-                    </ListBox>
-                  </DockPanel>
-                </Border>
-
-                <!-- Cột phải: Chi tiết điểm và nhận xét -->
-                <Border Grid.Column="2" Background="#FF1E293B" CornerRadius="10" Padding="16">
-                  <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel>
-                      <TextBlock Text="KẾT QUẢ ĐÁNH GIÁ CHI TIẾT" FontSize="18" FontWeight="Bold" Foreground="White" Margin="0,0,0,14"/>
-
-                      <!-- Bảng điểm tổng kết -->
-                      <Grid Margin="0,0,0,16">
-                        <Grid.ColumnDefinitions>
-                          <ColumnDefinition Width="*"/>
-                          <ColumnDefinition Width="*"/>
-                          <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-
-                        <!-- Điểm số -->
-                        <Border Grid.Column="0" Background="#FF0F172A" CornerRadius="8" Padding="12" Margin="0,0,6,0" BorderBrush="#FF334155" BorderThickness="1">
-                          <StackPanel HorizontalAlignment="Center">
-                            <TextBlock Text="ĐIỂM SỐ" Foreground="#94A3B8" FontSize="11" FontWeight="Bold"/>
-                            <TextBlock Text="{Binding SelectedSubmission.Score, StringFormat='{}{0:F1} / 10'}" Foreground="#38BDF8" FontSize="26" FontWeight="Bold" Margin="0,4"/>
-                            <TextBlock Text="Thang điểm 10" Foreground="#64748B" FontSize="10"/>
-                          </StackPanel>
-                        </Border>
-
-                        <!-- Cấp CEFR -->
-                        <Border Grid.Column="1" Background="#FF0F172A" CornerRadius="8" Padding="12" Margin="3,0,3,0" BorderBrush="#FF334155" BorderThickness="1">
-                          <StackPanel HorizontalAlignment="Center">
-                            <TextBlock Text="CẤP ĐỘ CEFR" Foreground="#94A3B8" FontSize="11" FontWeight="Bold"/>
-                            <TextBlock Text="{Binding SelectedSubmission.Assessed_Level}" Foreground="#34D399" FontSize="26" FontWeight="Bold" Margin="0,4"/>
-                            <TextBlock Text="Khung tham chiếu" Foreground="#64748B" FontSize="10"/>
-                          </StackPanel>
-                        </Border>
-
-                        <!-- Trạng thái -->
-                        <Border Grid.Column="2" Background="#FF0F172A" CornerRadius="8" Padding="12" Margin="6,0,0,0" BorderBrush="#FF334155" BorderThickness="1">
-                          <StackPanel HorizontalAlignment="Center">
-                            <TextBlock Text="TRẠNG THÁI" Foreground="#94A3B8" FontSize="11" FontWeight="Bold"/>
-                            <TextBlock Text="{Binding SelectedSubmission.Status}" Foreground="#FDE047" FontSize="16" FontWeight="Bold" Margin="0,8"/>
-                            <TextBlock Text="Tiến độ bài nộp" Foreground="#64748B" FontSize="10"/>
-                          </StackPanel>
-                        </Border>
-                      </Grid>
-
-                      <!-- Chi tiết điểm tự động từng phần thi (Auto Score Review) -->
-                      <Border Background="#FF0F172A" CornerRadius="8" Padding="14" Margin="0,0,0,14" BorderBrush="#FF334155" BorderThickness="1"
-                              Visibility="{Binding SelectedSubmission.Auto_Score, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <StackPanel>
-                          <DockPanel Margin="0,0,0,6">
-                            <TextBlock Text="KẾT QUẢ TỰ ĐỘNG CHẤM CỦA HỆ THỐNG:" FontWeight="Bold" Foreground="#38BDF8" FontSize="14"/>
-                            <TextBlock Text="{Binding SelectedSubmission.Auto_Score, StringFormat='Tổng điểm tự động: {0:F1} / 10'}" Foreground="#34D399" FontWeight="Bold" FontSize="14" DockPanel.Dock="Right"/>
-                          </DockPanel>
-
-                          <!-- Trạng thái xem đáp án -->
-                          <Border Background="#FF1E293B" CornerRadius="6" Padding="10" Margin="0,4,0,4"
-                                  Visibility="{Binding SelectedSubmission.Show_Answers, Converter={StaticResource BooleanToVisibilityConverter}}">
-                            <StackPanel>
-                              <TextBlock Text="CHI TIẾT TỪNG CÂU HỎI &amp; ĐÁP ÁN ĐÚNG:" FontWeight="Bold" Foreground="#FDE047" FontSize="12" Margin="0,0,0,6"/>
-                              <ItemsControl ItemsSource="{Binding SelectedSubmission.Exam_Answers}">
-                                <ItemsControl.ItemTemplate>
-                                  <DataTemplate>
-                                    <Border Background="#FF0F172A" CornerRadius="4" Padding="8,4" Margin="0,2" BorderBrush="#FF334155" BorderThickness="1">
-                                      <DockPanel>
-                                        <TextBlock Text="{Binding Question_Number, StringFormat='Câu {0}: '}" FontWeight="Bold" Foreground="#38BDF8"/>
-                                        <TextBlock Text="{Binding Points_Earned, StringFormat='+{0:F1}đ'}" Foreground="#34D399" FontWeight="Bold" DockPanel.Dock="Right" Margin="8,0,0,0"/>
-                                        <StackPanel Orientation="Horizontal">
-                                          <TextBlock Text="Bạn chọn: " Foreground="#94A3B8" FontSize="11"/>
-                                          <TextBlock Text="{Binding Student_Answer}" Foreground="White" FontWeight="SemiBold" FontSize="11" Margin="0,0,8,0"/>
-                                          <TextBlock Text="| Đáp án: " Foreground="#94A3B8" FontSize="11"/>
-                                          <TextBlock Text="{Binding Correct_Answer}" Foreground="#34D399" FontWeight="Bold" FontSize="11"/>
-                                        </StackPanel>
-                                      </DockPanel>
-                                    </Border>
-                                  </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                              </ItemsControl>
-                            </StackPanel>
-                          </Border>
+                            <ProgressBar Value="{Binding DailyGoalPercentage, Mode=OneWay}" Minimum="0" Maximum="100" Foreground="#FFC800"/>
+                            <TextBlock Text="Đánh dấu thuộc các thẻ từ vựng để tăng XP và hoàn thành mục tiêu ngày!" Foreground="#777777" FontSize="12" TextWrapping="Wrap" Margin="0,10,0,0"/>
                         </StackPanel>
-                      </Border>
-
-                      <!-- Nhận xét chi tiết (Feedback) -->
-                      <TextBlock Text="NHẬN XÉT CỦA GIẢNG VIÊN (FEEDBACK):" FontWeight="Bold" Foreground="#38BDF8" Margin="0,8,0,4"/>
-                      <Border Background="#FF0F172A" CornerRadius="8" Padding="14" Margin="0,0,0,14" BorderBrush="#FF334155" BorderThickness="1">
-                        <TextBlock Text="{Binding SelectedSubmission.Feedback}" TextWrapping="Wrap" Foreground="#F8FAFC" FontSize="14" LineHeight="20"/>
-                      </Border>
-
-                      <!-- Nội dung bài làm đã nộp -->
-                      <TextBlock Text="NỘI DUNG BÀI LÀM ĐÃ NỘP:" FontWeight="Bold" Foreground="#94A3B8" Margin="0,8,0,4"/>
-                      <Border Background="#FF0F172A" CornerRadius="8" Padding="12" BorderBrush="#FF334155" BorderThickness="1">
-                        <TextBlock Text="{Binding SelectedSubmission.Content}" TextWrapping="Wrap" Foreground="#CBD5E1" FontSize="13" LineHeight="18"/>
-                      </Border>
-                    </StackPanel>
-                  </ScrollViewer>
-                </Border>
-              </Grid>
-            </TabItem>
-          </TabControl>
-
-          <!-- ======================================================== -->
-          <!-- 2. GIAO DIỆN DÀNH CHO CHUYÊN GIA (EXPERT)                -->
-          <!-- ======================================================== -->
-          <TabControl Visibility="{Binding IsExpert, Converter={StaticResource BooleanToVisibilityConverter}}" Background="#FF0F172A" BorderBrush="#FF334155">
-            <!-- TAB 1: SINH ĐỀ THI BẰNG AI (F4 TRỌNG TÂM) -->
-            <TabItem Header="🤖 Sinh đề thi AI (Gemini)">
-              <Grid Margin="10">
-                <Grid.ColumnDefinitions>
-                  <ColumnDefinition Width="430"/>
-                  <ColumnDefinition Width="12"/>
-                  <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-
-                <!-- Cột trái: Cấu hình đề thi AI -->
-                <Border Grid.Column="0" Background="#FF1E293B" CornerRadius="10" Padding="14">
-                  <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel>
-                      <TextBlock Text="Cấu hình sinh đề thi AI" FontSize="18" FontWeight="Bold" Foreground="White" Margin="0,0,0,10"/>
-
-                      <!-- Chọn Sinh viên -->
-                      <TextBlock Text="Sinh viên mục tiêu:" Foreground="#CBD5E1" Margin="0,4,0,2"/>
-                      <ComboBox ItemsSource="{Binding StudentsList}" SelectedItem="{Binding SelectedExamStudent}" DisplayMemberPath="Name" Padding="6" Margin="0,0,0,8"/>
-
-                      <!-- Chọn Chủ đề của sinh viên -->
-                      <TextBlock Text="Chủ đề từ vựng đã học:" Foreground="#CBD5E1" Margin="0,4,0,2"/>
-                      <ComboBox ItemsSource="{Binding StudentTopics}" SelectedItem="{Binding SelectedExamTopic}" DisplayMemberPath="Name" Padding="6" Margin="0,0,0,8"/>
-
-                      <!-- Cấp độ CEFR -->
-                      <TextBlock Text="Cấp độ CEFR mục tiêu:" Foreground="#CBD5E1" Margin="0,4,0,2"/>
-                      <ComboBox ItemsSource="{Binding CefrLevels}" SelectedItem="{Binding ExamCefrLevel}" Padding="6" Margin="0,0,0,10"/>
-
-                      <!-- Cấu trúc 4 phần thi -->
-                      <TextBlock Text="CẤU TRÚC 4 PHẦN THI KHẢO THÍ:" FontWeight="Bold" Foreground="#38BDF8" Margin="0,4,0,6"/>
-
-                      <!-- Phần 1: Biển báo -->
-                      <Border Background="#FF0F172A" CornerRadius="6" Padding="8" Margin="0,0,0,6">
-                        <Grid>
-                          <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="65"/>
-                            <ColumnDefinition Width="65"/>
-                          </Grid.ColumnDefinitions>
-                          <CheckBox Grid.Column="0" IsChecked="{Binding IncludeSigns}" Content="Biển báo/Thông báo" Foreground="White" VerticalAlignment="Center"/>
-                          <StackPanel Grid.Column="1" Margin="4,0">
-                            <TextBlock Text="Số câu" Foreground="#94A3B8" FontSize="10"/>
-                            <TextBox Text="{Binding SignsCount, UpdateSourceTrigger=PropertyChanged}" Background="#FF1E293B" Foreground="White" Padding="4"/>
-                          </StackPanel>
-                          <StackPanel Grid.Column="2" Margin="4,0">
-                            <TextBlock Text="Điểm" Foreground="#94A3B8" FontSize="10"/>
-                            <TextBox Text="{Binding SignsPoints, UpdateSourceTrigger=PropertyChanged}" Background="#FF1E293B" Foreground="White" Padding="4"/>
-                          </StackPanel>
-                        </Grid>
-                      </Border>
-
-                      <!-- Phần 2: Từ vựng MCQ -->
-                      <Border Background="#FF0F172A" CornerRadius="6" Padding="8" Margin="0,0,0,6">
-                        <Grid>
-                          <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="65"/>
-                            <ColumnDefinition Width="65"/>
-                          </Grid.ColumnDefinitions>
-                          <CheckBox Grid.Column="0" IsChecked="{Binding IncludeVocabulary}" Content="Trắc nghiệm Từ vựng" Foreground="White" VerticalAlignment="Center"/>
-                          <StackPanel Grid.Column="1" Margin="4,0">
-                            <TextBlock Text="Số câu" Foreground="#94A3B8" FontSize="10"/>
-                            <TextBox Text="{Binding VocabularyCount, UpdateSourceTrigger=PropertyChanged}" Background="#FF1E293B" Foreground="White" Padding="4"/>
-                          </StackPanel>
-                          <StackPanel Grid.Column="2" Margin="4,0">
-                            <TextBlock Text="Điểm" Foreground="#94A3B8" FontSize="10"/>
-                            <TextBox Text="{Binding VocabularyPoints, UpdateSourceTrigger=PropertyChanged}" Background="#FF1E293B" Foreground="White" Padding="4"/>
-                          </StackPanel>
-                        </Grid>
-                      </Border>
-
-                      <!-- Phần 3: Cloze test -->
-                      <Border Background="#FF0F172A" CornerRadius="6" Padding="8" Margin="0,0,0,6">
-                        <Grid>
-                          <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="65"/>
-                            <ColumnDefinition Width="65"/>
-                          </Grid.ColumnDefinitions>
-                          <CheckBox Grid.Column="0" IsChecked="{Binding IncludeCloze}" Content="Điền khuyết (Cloze)" Foreground="White" VerticalAlignment="Center"/>
-                          <StackPanel Grid.Column="1" Margin="4,0">
-                            <TextBlock Text="Số câu" Foreground="#94A3B8" FontSize="10"/>
-                            <TextBox Text="{Binding ClozeCount, UpdateSourceTrigger=PropertyChanged}" Background="#FF1E293B" Foreground="White" Padding="4"/>
-                          </StackPanel>
-                          <StackPanel Grid.Column="2" Margin="4,0">
-                            <TextBlock Text="Điểm" Foreground="#94A3B8" FontSize="10"/>
-                            <TextBox Text="{Binding ClozePoints, UpdateSourceTrigger=PropertyChanged}" Background="#FF1E293B" Foreground="White" Padding="4"/>
-                          </StackPanel>
-                        </Grid>
-                      </Border>
-
-                      <!-- Phần 4: Sắp xếp câu -->
-                      <Border Background="#FF0F172A" CornerRadius="6" Padding="8" Margin="0,0,0,10">
-                        <Grid>
-                          <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="65"/>
-                            <ColumnDefinition Width="65"/>
-                          </Grid.ColumnDefinitions>
-                          <CheckBox Grid.Column="0" IsChecked="{Binding IncludeWordOrdering}" Content="Sắp xếp trật tự từ" Foreground="White" VerticalAlignment="Center"/>
-                          <StackPanel Grid.Column="1" Margin="4,0">
-                            <TextBlock Text="Số câu" Foreground="#94A3B8" FontSize="10"/>
-                            <TextBox Text="{Binding WordOrderingCount, UpdateSourceTrigger=PropertyChanged}" Background="#FF1E293B" Foreground="White" Padding="4"/>
-                          </StackPanel>
-                          <StackPanel Grid.Column="2" Margin="4,0">
-                            <TextBlock Text="Điểm" Foreground="#94A3B8" FontSize="10"/>
-                            <TextBox Text="{Binding WordOrderingPoints, UpdateSourceTrigger=PropertyChanged}" Background="#FF1E293B" Foreground="White" Padding="4"/>
-                          </StackPanel>
-                        </Grid>
-                      </Border>
-
-                      <!-- Thời gian & Hạn nộp -->
-                      <Grid Margin="0,0,0,8">
-                        <Grid.ColumnDefinitions>
-                          <ColumnDefinition Width="*"/>
-                          <ColumnDefinition Width="8"/>
-                          <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                          <TextBlock Text="Thời gian (phút):" Foreground="#CBD5E1" Margin="0,0,0,2"/>
-                          <TextBox Text="{Binding ExamDuration, UpdateSourceTrigger=PropertyChanged}" Background="#FF0F172A" Foreground="White" Padding="8"/>
-                        </StackPanel>
-                        <StackPanel Grid.Column="2">
-                          <TextBlock Text="Hạn nộp:" Foreground="#CBD5E1" Margin="0,0,0,2"/>
-                          <TextBox Text="{Binding ExamDueDate, UpdateSourceTrigger=PropertyChanged}" Background="#FF0F172A" Foreground="White" Padding="8"/>
-                        </StackPanel>
-                      </Grid>
-
-                      <!-- Xem đáp án -->
-                      <CheckBox IsChecked="{Binding ExamShowAnswers}" Content="Cho phép sinh viên xem đáp án chi tiết sau khi nộp" Foreground="#A78BFA" Margin="0,4,0,12"/>
-
-                      <!-- Nút sinh đề -->
-                      <Button Content="🤖 SINH ĐỀ THI BẰNG AI" Command="{Binding GenerateExamCommand}"
-                              Padding="14,12" Background="#FF2563EB" Foreground="White" FontWeight="Bold" FontSize="14" Cursor="Hand"/>
-                    </StackPanel>
-                  </ScrollViewer>
-                </Border>
-
-                <!-- Cột phải: Xem trước đề thi -->
-                <Border Grid.Column="2" Background="#FF1E293B" CornerRadius="10" Padding="14">
-                  <Grid>
-                    <Grid.RowDefinitions>
-                      <RowDefinition Height="Auto"/>
-                      <RowDefinition Height="*"/>
-                      <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-
-                    <DockPanel Grid.Row="0" Margin="0,0,0,10">
-                      <TextBlock Text="Xem trước đề thi đã sinh" FontSize="18" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
-                      <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" Visibility="{Binding HasGeneratedExam, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <Border Background="#FF10B981" CornerRadius="4" Padding="6,2" Margin="0,0,8,0">
-                          <TextBlock Text="{Binding GeneratedExam.Cefr_Level, StringFormat='CEFR {0}'}" Foreground="White" FontWeight="Bold"/>
-                        </Border>
-                        <Border Background="#FF3B82F6" CornerRadius="4" Padding="6,2">
-                          <TextBlock Text="{Binding GeneratedExam.Total_Points, StringFormat='Tổng {0:F1} điểm'}" Foreground="White" FontWeight="Bold"/>
-                        </Border>
-                      </StackPanel>
-                    </DockPanel>
-
-                    <!-- Danh sách các section xem trước -->
-                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                      <StackPanel>
-                        <!-- Khi đã có đề thi -->
-                        <Border Background="#FF0F172A" CornerRadius="8" Padding="24" Margin="0,10"
-                                Visibility="{Binding HasGeneratedExam, Converter={StaticResource BooleanToVisibilityConverter}}">
-                          <StackPanel>
-                            <TextBlock Text="{Binding GeneratedExam.Exam_Title}" FontSize="20" FontWeight="Bold" Foreground="#38BDF8" TextWrapping="Wrap" Margin="0,0,0,12"/>
-                            
-                            <ItemsControl ItemsSource="{Binding GeneratedExam.Sections}">
-                              <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                  <Border Background="#FF1E293B" CornerRadius="8" Padding="12" Margin="0,0,0,10" BorderBrush="#FF334155" BorderThickness="1">
-                                    <StackPanel>
-                                      <DockPanel>
-                                        <TextBlock Text="{Binding Title}" FontWeight="Bold" FontSize="14" Foreground="#FDE047"/>
-                                        <TextBlock Text="{Binding Points, StringFormat='{}{0:F1} điểm'}" Foreground="#34D399" DockPanel.Dock="Right" FontWeight="SemiBold"/>
-                                      </DockPanel>
-                                      <TextBlock Text="{Binding Instructions}" Foreground="#94A3B8" FontSize="12" Margin="0,4,0,6" TextWrapping="Wrap"/>
-                                      
-                                      <!-- Passage nếu có -->
-                                      <Border Background="#FF0F172A" CornerRadius="6" Padding="8" Margin="0,4,0,8"
-                                              Visibility="{Binding Passage, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                        <TextBlock Text="{Binding Passage}" Foreground="#E2E8F0" FontSize="12" TextWrapping="Wrap" LineHeight="18"/>
-                                      </Border>
-
-                                      <!-- Số lượng câu hỏi -->
-                                      <TextBlock Text="{Binding Questions.Count, StringFormat='Số câu hỏi: {0}'}" Foreground="#93C5FD" FontSize="11"/>
-                                    </StackPanel>
-                                  </Border>
-                                </DataTemplate>
-                              </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                          </StackPanel>
-                        </Border>
-                      </StackPanel>
-                    </ScrollViewer>
-
-                    <!-- Nút lưu hoặc giao đề -->
-                    <Border Grid.Row="2" Background="#FF0F172A" CornerRadius="8" Padding="12" Margin="0,10,0,0"
-                            Visibility="{Binding HasGeneratedExam, Converter={StaticResource BooleanToVisibilityConverter}}">
-                      <DockPanel LastChildFill="False">
-                        <Button Content="💾 Lưu bản nháp (Draft)" Command="{Binding SaveExamDraftCommand}"
-                                Padding="16,8" Background="#FF475569" Foreground="White" FontWeight="Bold" DockPanel.Dock="Left"/>
-                        <Button Content="🚀 GIAO NGAY CHO SINH VIÊN (Publish)" Command="{Binding PublishExamCommand}"
-                                Padding="20,8" Background="#FF059669" Foreground="White" FontWeight="Bold" DockPanel.Dock="Right"/>
-                      </DockPanel>
                     </Border>
-                  </Grid>
-                </Border>
-              </Grid>
-            </TabItem>
 
-            <!-- TAB 2: QUẢN LÝ BÀI TẬP & ĐỀ THI -->
-            <TabItem Header="Quản lý đề thi &amp; Bài tập">
-              <Grid Margin="10">
-                <Grid.ColumnDefinitions>
-                  <ColumnDefinition Width="420"/>
-                  <ColumnDefinition Width="12"/>
-                  <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-
-                <!-- Form tạo / chỉnh sửa bài tập thủ công -->
-                <Border Grid.Column="0" Background="#FF1E293B" CornerRadius="10" Padding="14">
-                  <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel>
-                      <TextBlock Text="Soạn thảo Đề thi / Bài tập" FontSize="18" FontWeight="Bold" Foreground="White" Margin="0,0,0,10"/>
-
-                      <TextBlock Text="Tiêu đề bài thi:" Foreground="#CBD5E1" Margin="0,4,0,2"/>
-                      <TextBox Text="{Binding AssignmentTitle, UpdateSourceTrigger=PropertyChanged}" Background="#FF0F172A" Foreground="White" BorderBrush="#FF475569" Padding="8" Margin="0,0,0,8"/>
-
-                      <Grid Margin="0,0,0,8">
-                        <Grid.ColumnDefinitions>
-                          <ColumnDefinition Width="*"/>
-                          <ColumnDefinition Width="8"/>
-                          <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                          <TextBlock Text="Kỹ năng:" Foreground="#CBD5E1" Margin="0,0,0,2"/>
-                          <ComboBox ItemsSource="{Binding Skills}" SelectedItem="{Binding AssignmentSkill}" Padding="6"/>
-                        </StackPanel>
-                        <StackPanel Grid.Column="2">
-                          <TextBlock Text="Cấp CEFR mục tiêu:" Foreground="#CBD5E1" Margin="0,0,0,2"/>
-                          <ComboBox ItemsSource="{Binding CefrLevels}" SelectedItem="{Binding SelectedCefr}" Padding="6"/>
-                        </StackPanel>
-                      </Grid>
-
-                      <Grid Margin="0,0,0,8">
-                        <Grid.ColumnDefinitions>
-                          <ColumnDefinition Width="*"/>
-                          <ColumnDefinition Width="8"/>
-                          <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                          <TextBlock Text="Thời gian (phút):" Foreground="#CBD5E1" Margin="0,0,0,2"/>
-                          <TextBox Text="{Binding AssignmentDuration, UpdateSourceTrigger=PropertyChanged}" Background="#FF0F172A" Foreground="White" BorderBrush="#FF475569" Padding="8"/>
-                        </StackPanel>
-                        <StackPanel Grid.Column="2">
-                          <TextBlock Text="Hạn nộp (YYYY-MM-DD):" Foreground="#CBD5E1" Margin="0,0,0,2"/>
-                          <TextBox Text="{Binding AssignmentDueDate, UpdateSourceTrigger=PropertyChanged}" Background="#FF0F172A" Foreground="White" BorderBrush="#FF475569" Padding="8"/>
-                        </StackPanel>
-                      </Grid>
-
-                      <TextBlock Text="Hướng dẫn làm bài:" Foreground="#CBD5E1" Margin="0,4,0,2"/>
-                      <TextBox Text="{Binding AssignmentInstructions, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" MinHeight="65" TextWrapping="Wrap" Background="#FF0F172A" Foreground="White" BorderBrush="#FF475569" Padding="8" Margin="0,0,0,8"/>
-
-                      <TextBlock Text="Nội dung đề bài / Đoạn văn đọc (Reading passage):" Foreground="#CBD5E1" Margin="0,4,0,2"/>
-                      <TextBox Text="{Binding AssignmentContent, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" MinHeight="85" TextWrapping="Wrap" Background="#FF0F172A" Foreground="White" BorderBrush="#FF475569" Padding="8" Margin="0,0,0,12"/>
-
-                      <!-- Nút hành động -->
-                      <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                        <Button Content="Tạo bài mới" Command="{Binding CreateAssignmentCommand}" Padding="14,8" Background="#FF2563EB" Foreground="White" FontWeight="Bold" Margin="0,0,8,0"/>
-                        <Button Content="Lưu cập nhật (Sửa)" Command="{Binding UpdateAssignmentCommand}" Padding="14,8" Background="#FF059669" Foreground="White" FontWeight="Bold" Margin="0,0,8,0"/>
-                        <Button Content="Làm mới" Command="{Binding ClearAssignmentFormCommand}" Padding="10,8" Background="#FF475569" Foreground="White"/>
-                      </StackPanel>
-                    </StackPanel>
-                  </ScrollViewer>
-                </Border>
-
-                <!-- Cột phải: Danh sách bài tập do chuyên gia quản lý -->
-                <Border Grid.Column="2" Background="#FF1E293B" CornerRadius="10" Padding="14">
-                  <DockPanel>
-                    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
-                      <TextBlock Text="Danh sách đề thi &amp; bài tập" FontSize="18" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
-                      <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
-                        <Button Content="🚀 Giao đề (Publish)" Command="{Binding PublishSelectedAssignmentCommand}" Padding="8,5" Background="#FF059669" Foreground="White" Margin="0,0,6,0" ToolTip="Giao bản nháp cho sinh viên làm"/>
-                        <Button Content="👁 Bật/Tắt đáp án" Command="{Binding ToggleShowAnswersCommand}" Padding="8,5" Background="#FF8B5CF6" Foreground="White" Margin="0,0,6,0" ToolTip="Cho phép/Ẩn sinh viên xem đáp án chi tiết"/>
-                        <Button Content="Sửa" Command="{Binding EditAssignmentCommand}" Padding="8,5" Background="#FF3B82F6" Foreground="White" Margin="0,0,6,0"/>
-                        <Button Content="Xóa" Command="{Binding DeleteAssignmentCommand}" Padding="8,5" Background="#FFDC2626" Foreground="White" Margin="0,0,6,0"/>
-                        <Button Content="Tải lại" Command="{Binding RefreshF4Command}" Padding="8,5" Background="#FF334155" Foreground="White"/>
-                      </StackPanel>
-                    </DockPanel>
-
-                    <ListBox ItemsSource="{Binding Assignments}" SelectedItem="{Binding SelectedAssignment}" Background="#FF0F172A" BorderBrush="#FF334155" Foreground="White">
-                      <ListBox.ItemTemplate>
-                        <DataTemplate>
-                          <Border Background="#FF1E293B" CornerRadius="8" Padding="12" Margin="0,4" BorderBrush="#FF334155" BorderThickness="1">
-                            <StackPanel>
-                              <DockPanel>
-                                <TextBlock Text="{Binding Title}" FontWeight="Bold" FontSize="15" Foreground="White"/>
-                                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
-                                  <Border Background="#FF059669" CornerRadius="4" Padding="6,2" Margin="0,0,6,0">
-                                    <TextBlock Text="{Binding Status}" Foreground="White" FontSize="11" FontWeight="Bold"/>
-                                  </Border>
-                                  <TextBlock Text="{Binding Submission_Count, StringFormat='{}{0} bài nộp'}" Foreground="#38BDF8" FontWeight="SemiBold"/>
-                                </StackPanel>
-                              </DockPanel>
-                              <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                                <Border Background="#FF3B82F6" CornerRadius="4" Padding="6,2" Margin="0,0,6,0"><TextBlock Text="{Binding Skill}" Foreground="White" FontSize="11"/></Border>
-                                <Border Background="#FF10B981" CornerRadius="4" Padding="6,2" Margin="0,0,6,0"><TextBlock Text="{Binding Target_Level}" Foreground="White" FontSize="11"/></Border>
-                                <Border Background="#FF6366F1" CornerRadius="4" Padding="6,2" Margin="0,0,6,0"><TextBlock Text="{Binding Duration_Minutes, StringFormat='{}{0} phút'}" Foreground="White" FontSize="11"/></Border>
-                                <TextBlock Text="{Binding Due_Date, StringFormat='Hạn: {0}'}" Foreground="#94A3B8" FontSize="11" VerticalAlignment="Center" Margin="6,0,0,0"/>
-                                <TextBlock Text="{Binding Show_Answers, StringFormat='| Hiện đáp án: {0}'}" Foreground="#FBBF24" FontSize="11" VerticalAlignment="Center" Margin="6,0,0,0"/>
-                              </StackPanel>
-                              <TextBlock Text="{Binding Target_Student_Name, StringFormat='Giao cho: {0}'}" Foreground="#A78BFA" FontSize="11" Margin="0,4,0,0"/>
-                              <TextBlock Text="{Binding Instructions}" TextWrapping="Wrap" Foreground="#CBD5E1" FontSize="12" Margin="0,4,0,0"/>
-                            </StackPanel>
-                          </Border>
-                        </DataTemplate>
-                      </ListBox.ItemTemplate>
-                    </ListBox>
-                  </DockPanel>
-                </Border>
-              </Grid>
-            </TabItem>
-
-            <!-- TAB 3: CHẤM THI & ĐÁNH GIÁ CEFR -->
-            <TabItem Header="Chấm thi &amp; Đánh giá CEFR">
-              <Grid Margin="10">
-                <Grid.ColumnDefinitions>
-                  <ColumnDefinition Width="420"/>
-                  <ColumnDefinition Width="12"/>
-                  <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-
-                <!-- Cột trái: Danh sách bài nộp của sinh viên -->
-                <Border Grid.Column="0" Background="#FF1E293B" CornerRadius="10" Padding="12">
-                  <DockPanel>
-                    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
-                      <TextBlock Text="Danh sách bài nộp" FontSize="18" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
-                      <Button Content="Tải lại" Command="{Binding RefreshF4Command}" DockPanel.Dock="Right" Padding="10,4" Background="#FF334155" Foreground="White"/>
-                    </DockPanel>
-
-                    <ListBox ItemsSource="{Binding Submissions}" SelectedItem="{Binding SelectedSubmission}" Background="#FF0F172A" BorderBrush="#FF334155" Foreground="White">
-                      <ListBox.ItemTemplate>
-                        <DataTemplate>
-                          <Border Background="#FF1E293B" CornerRadius="8" Padding="10" Margin="0,4" BorderBrush="#FF334155" BorderThickness="1">
-                            <StackPanel>
-                              <DockPanel>
-                                <TextBlock Text="{Binding Student_Name}" FontWeight="Bold" FontSize="14" Foreground="White"/>
-                                <Border Background="#FF059669" CornerRadius="4" Padding="6,2" DockPanel.Dock="Right">
-                                  <TextBlock Text="{Binding Status}" Foreground="White" FontSize="11" FontWeight="Bold"/>
-                                </Border>
-                              </DockPanel>
-                              <TextBlock Text="{Binding Assignment_Title}" Foreground="#93C5FD" FontSize="12" Margin="0,4,0,0"/>
-                              <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                <TextBlock Text="{Binding Skill}" Foreground="#FBBF24" FontSize="11" Margin="0,0,12,0"/>
-                                <TextBlock Text="{Binding Score, StringFormat='Điểm: {0}'}" Foreground="#34D399" FontSize="11" Margin="0,0,12,0"/>
-                                <TextBlock Text="{Binding Assessed_Level, StringFormat='CEFR: {0}'}" Foreground="#A78BFA" FontSize="11"/>
-                              </StackPanel>
-                            </StackPanel>
-                          </Border>
-                        </DataTemplate>
-                      </ListBox.ItemTemplate>
-                    </ListBox>
-                  </DockPanel>
-                </Border>
-
-                <!-- Cột phải: Xem bài làm & Chấm điểm -->
-                <Border Grid.Column="2" Background="#FF1E293B" CornerRadius="10" Padding="16">
-                  <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel>
-                      <TextBlock Text="CHI TIẾT BÀI NỘP VÀ CHẤM ĐIỂM" FontSize="18" FontWeight="Bold" Foreground="White" Margin="0,0,0,12"/>
-
-                      <!-- Thông tin bài nộp -->
-                      <Border Background="#FF0F172A" CornerRadius="8" Padding="12" Margin="0,0,0,12">
-                        <Grid>
-                          <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                          <StackPanel Grid.Column="0">
-                            <TextBlock Text="{Binding SelectedSubmission.Student_Name, StringFormat='Sinh viên: {0}'}" Foreground="White" FontWeight="Bold" FontSize="14"/>
-                            <TextBlock Text="{Binding SelectedSubmission.Assignment_Title, StringFormat='Đề thi: {0}'}" Foreground="#93C5FD" Margin="0,4,0,0"/>
-                          </StackPanel>
-                          <StackPanel Grid.Column="1" HorizontalAlignment="Right">
-                            <TextBlock Text="{Binding SelectedSubmission.Skill, StringFormat='Kỹ năng: {0}'}" Foreground="#FDE047" FontWeight="SemiBold"/>
-                            <TextBlock Text="{Binding SelectedSubmission.Submitted_At, StringFormat='Thời điểm nộp: {0}'}" Foreground="#94A3B8" FontSize="11" Margin="0,4,0,0"/>
-                          </StackPanel>
-                        </Grid>
-                      </Border>
-
-                      <!-- Nội dung bài làm của sinh viên -->
-                      <TextBlock Text="NỘI DUNG BÀI LÀM CỦA SINH VIÊN:" FontWeight="Bold" Foreground="#38BDF8" Margin="0,0,0,4"/>
-                      <Border Background="#FF0F172A" CornerRadius="8" Padding="12" Margin="0,0,0,14" BorderBrush="#FF334155" BorderThickness="1">
+                    <!-- TỔNG QUAN HỌC TẬP -->
+                    <Border Style="{StaticResource DuoCardBorder}" Margin="0,0,0,14">
                         <StackPanel>
-                          <TextBlock Text="{Binding SelectedSubmission.Content}" TextWrapping="Wrap" Foreground="#F8FAFC" FontSize="13" LineHeight="20"/>
-                          <TextBlock Text="{Binding SelectedSubmission.Audio_Url, StringFormat='Liên kết audio/ghi âm: {0}'}" Foreground="#60A5FA" FontSize="12" Margin="0,8,0,0"/>
-                          <TextBlock Text="{Binding SelectedSubmission.Reading_Auto_Score, StringFormat='Điểm trắc nghiệm tự chấm: {0:F1} / 5.0'}" Foreground="#34D399" FontWeight="Bold" FontSize="12" Margin="0,6,0,0"/>
-                          <TextBlock Text="{Binding SelectedSubmission.Topic_Sentence, StringFormat='Câu chủ đề (Topic Sentence): {0}'}" Foreground="#FDE047" FontSize="12" Margin="0,6,0,0"/>
+                            <TextBlock Text="Tổng quan học tập" FontWeight="ExtraBold" FontSize="15" Foreground="#3C3C3C" Margin="0,0,0,10"/>
+                            <DockPanel Margin="0,0,0,6">
+                                <TextBlock Text="Chủ đề đã tạo:" Foreground="#777777" FontWeight="SemiBold"/>
+                                <TextBlock Text="{Binding TotalTopicsCount}" Foreground="#1899D6" FontWeight="ExtraBold" DockPanel.Dock="Right"/>
+                            </DockPanel>
+                            <DockPanel Margin="0,0,0,6">
+                                <TextBlock Text="Tổng số thẻ:" Foreground="#777777" FontWeight="SemiBold"/>
+                                <TextBlock Text="{Binding TotalCardsCount}" Foreground="#58A700" FontWeight="ExtraBold" DockPanel.Dock="Right"/>
+                            </DockPanel>
+                            <DockPanel>
+                                <TextBlock Text="Bài thi đã nộp:" Foreground="#777777" FontWeight="SemiBold"/>
+                                <TextBlock Text="{Binding StudentSubmissions.Count}" Foreground="#A560E8" FontWeight="ExtraBold" DockPanel.Dock="Right"/>
+                            </DockPanel>
                         </StackPanel>
-                      </Border>
+                    </Border>
 
-                      <!-- Chi tiết các câu hỏi bài thi khảo thí nếu có (Exam Answers Review) -->
-                      <Border Background="#FF0F172A" CornerRadius="8" Padding="12" Margin="0,0,0,14" BorderBrush="#FF334155" BorderThickness="1"
-                              Visibility="{Binding SelectedSubmission.Exam_Answers, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <!-- LỐI TẮT NHANH -->
+                    <Border Background="#F0FBE8" BorderBrush="#58CC02" BorderThickness="2,2,2,4" CornerRadius="16" Padding="14">
                         <StackPanel>
-                          <DockPanel Margin="0,0,0,8">
-                            <TextBlock Text="BÀI LÀM KHẢO THÍ CHI TIẾT (TỰ ĐỘNG CHẤM):" FontWeight="Bold" Foreground="#38BDF8" FontSize="13"/>
-                            <TextBlock Text="{Binding SelectedSubmission.Auto_Score, StringFormat='Điểm tự động: {0:F1} / 10'}" Foreground="#34D399" FontWeight="Bold" FontSize="13" DockPanel.Dock="Right"/>
-                          </DockPanel>
-
-                          <ItemsControl ItemsSource="{Binding SelectedSubmission.Exam_Answers}">
-                            <ItemsControl.ItemTemplate>
-                              <DataTemplate>
-                                <Border Background="#FF1E293B" CornerRadius="6" Padding="10,6" Margin="0,3" BorderBrush="#FF334155" BorderThickness="1">
-                                  <DockPanel>
-                                    <TextBlock Text="{Binding Question_Number, StringFormat='Câu {0}: '}" FontWeight="Bold" Foreground="#38BDF8"/>
-                                    <TextBlock Text="{Binding Points_Earned, StringFormat='+{0:F1}đ'}" Foreground="#34D399" FontWeight="Bold" DockPanel.Dock="Right" Margin="8,0,0,0"/>
-                                    <StackPanel Orientation="Horizontal">
-                                      <TextBlock Text="Sinh viên chọn: " Foreground="#94A3B8" FontSize="12"/>
-                                      <TextBlock Text="{Binding Student_Answer}" Foreground="White" FontWeight="SemiBold" FontSize="12" Margin="0,0,10,0"/>
-                                      <TextBlock Text="| Đáp án chuẩn: " Foreground="#94A3B8" FontSize="12"/>
-                                      <TextBlock Text="{Binding Correct_Answer}" Foreground="#34D399" FontWeight="Bold" FontSize="12"/>
-                                    </StackPanel>
-                                  </DockPanel>
-                                </Border>
-                              </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                          </ItemsControl>
+                            <TextBlock Text="💡 Mẹo học nhanh" FontWeight="ExtraBold" Foreground="#58A700" FontSize="14" Margin="0,0,0,4"/>
+                            <TextBlock Text="Nhấn vào bất kỳ chủ đề tròn nào trên Lộ trình để mở Flashcard 3D ngay lập tức." Foreground="#3C3C3C" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                            <Button Content="📝 LÀM BÀI KHẢO THÍ" Command="{Binding NavigateCommand}" CommandParameter="Assessment" Style="{StaticResource DuoPrimaryButton}" Padding="10,8" FontSize="12"/>
                         </StackPanel>
-                      </Border>
-
-                      <!-- Form giảng viên chấm điểm -->
-                      <TextBlock Text="ĐÁNH GIÁ CỦA GIẢNG VIÊN (EXPERT GRADING):" FontWeight="Bold" Foreground="#34D399" Margin="0,0,0,6"/>
-                      <Border Background="#FF0F172A" CornerRadius="8" Padding="14" BorderBrush="#FF334155" BorderThickness="1">
-                        <StackPanel>
-                          <Grid Margin="0,0,0,10">
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0">
-                              <TextBlock Text="Điểm số (thang 10):" Foreground="#CBD5E1" Margin="0,0,0,4"/>
-                              <TextBox Text="{Binding GradeScore, UpdateSourceTrigger=PropertyChanged}" Background="#FF1E293B" Foreground="White" BorderBrush="#FF475569" Padding="8" FontSize="15" FontWeight="Bold"/>
-                            </StackPanel>
-                            <StackPanel Grid.Column="2">
-                              <TextBlock Text="Đánh giá cấp CEFR:" Foreground="#CBD5E1" Margin="0,0,0,4"/>
-                              <ComboBox ItemsSource="{Binding CefrLevels}" SelectedItem="{Binding GradeCefr}" Padding="8"/>
-                            </StackPanel>
-                          </Grid>
-
-                          <TextBlock Text="Nhận xét chi tiết cho sinh viên:" Foreground="#CBD5E1" Margin="0,0,0,4"/>
-                          <TextBox Text="{Binding GradeFeedback, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" MinHeight="90" TextWrapping="Wrap" Background="#FF1E293B" Foreground="White" BorderBrush="#FF475569" Padding="8" Margin="0,0,0,12"/>
-
-                          <Button Content="LƯU KẾT QUẢ CHẤM ĐIỂM" Command="{Binding SubmitGradeCommand}"
-                                  Height="44" Background="#FF059669" Foreground="White" FontWeight="Bold" FontSize="14" Cursor="Hand"/>
-                        </StackPanel>
-                      </Border>
-                    </StackPanel>
-                  </ScrollViewer>
-                </Border>
-              </Grid>
-            </TabItem>
-          </TabControl>
+                    </Border>
+                </StackPanel>
+            </Border>
         </Grid>
-      </TabItem>
 
-      <TabItem Header="Khu vực quản trị" Visibility="{Binding IsAdmin, Converter={StaticResource BooleanToVisibilityConverter}}">
-        <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="16">
-          <DockPanel><TextBlock Text="Quản trị hệ thống" FontSize="24" FontWeight="Bold"/><StackPanel Orientation="Horizontal" DockPanel.Dock="Right"><Button Content="Tải lại dữ liệu" Command="{Binding RefreshAdminCommand}" Padding="12,6"/><Button Content="Đồng bộ MySQL" Command="{Binding SyncMysqlCommand}" Margin="8,0,0,0" Padding="12,6"/></StackPanel></DockPanel>
-          <TextBlock Text="{Binding AdminSummary}" TextWrapping="Wrap" Margin="0,12"/>
-          <GroupBox Header="Người dùng và phân quyền · sửa Role/Status rồi lưu" Padding="8" Margin="0,0,0,12"><DockPanel><Button Content="Lưu vai trò / trạng thái" Command="{Binding SaveUserCommand}" DockPanel.Dock="Bottom" Margin="0,8,0,0" Padding="10,6"/><DataGrid ItemsSource="{Binding Users}" SelectedItem="{Binding SelectedUser}" AutoGenerateColumns="False" CanUserAddRows="False" MinHeight="190"><DataGrid.Columns><DataGridTextColumn Header="Tên" Binding="{Binding Name}" IsReadOnly="True" Width="*"/><DataGridTextColumn Header="Email" Binding="{Binding Email}" IsReadOnly="True" Width="*"/><DataGridTextColumn Header="Vai trò" Binding="{Binding Role, UpdateSourceTrigger=PropertyChanged}" Width="100"/><DataGridTextColumn Header="Trạng thái" Binding="{Binding Status, UpdateSourceTrigger=PropertyChanged}" Width="110"/></DataGrid.Columns></DataGrid></DockPanel></GroupBox>
-          <GroupBox Header="Cấu hình AI" Padding="8" Margin="0,0,0,12"><StackPanel><TextBox Text="{Binding AiConfig.Model_Name, UpdateSourceTrigger=PropertyChanged}" ToolTip="Model" Margin="0,0,0,6"/><TextBox Text="{Binding AiConfig.Temperature}" ToolTip="Temperature" Margin="0,0,0,6"/><TextBox Text="{Binding AiConfig.Max_Output_Tokens}" ToolTip="Max output tokens" Margin="0,0,0,6"/><CheckBox Content="Anti repetition" IsChecked="{Binding AiConfig.Anti_Repetition}" Margin="0,0,0,6"/><TextBox Text="{Binding AiConfig.System_Instruction, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" MinHeight="60" TextWrapping="Wrap"/><Button Content="Lưu cấu hình" Command="{Binding SaveAiConfigCommand}" HorizontalAlignment="Left" Margin="0,8,0,0" Padding="12,6"/></StackPanel></GroupBox>
-          <GroupBox Header="Chương trình DAU" Padding="8" Margin="0,0,0,12"><DockPanel><StackPanel DockPanel.Dock="Bottom" Margin="0,8,0,0"><TextBox Text="{Binding CurriculumName, UpdateSourceTrigger=PropertyChanged}" ToolTip="Tên chủ đề" Margin="0,0,0,6"/><ComboBox ItemsSource="{Binding CefrLevels}" SelectedItem="{Binding CurriculumLevel}" Margin="0,0,0,6"/><StackPanel Orientation="Horizontal"><Button Content="Thêm chủ đề" Command="{Binding AddCurriculumCommand}" Padding="10,5"/><Button Content="Xóa đã chọn" Command="{Binding DeleteCurriculumCommand}" Margin="8,0,0,0" Padding="10,5"/></StackPanel></StackPanel><ListBox ItemsSource="{Binding Curriculum}" SelectedItem="{Binding SelectedCurriculum}" MinHeight="120"><ListBox.ItemTemplate><DataTemplate><StackPanel Orientation="Horizontal" Margin="4"><TextBlock Text="{Binding Name}"/><TextBlock Text="{Binding Level}" Margin="8,0,0,0"/></StackPanel></DataTemplate></ListBox.ItemTemplate></ListBox></DockPanel></GroupBox>
-          <GroupBox Header="API logs" Padding="8"><DataGrid ItemsSource="{Binding ApiLogs}" AutoGenerateColumns="False" IsReadOnly="True" MinHeight="160"><DataGrid.Columns><DataGridTextColumn Header="Thời điểm" Binding="{Binding Timestamp}" Width="2*"/><DataGridTextColumn Header="Method" Binding="{Binding Method}" Width="*"/><DataGridTextColumn Header="Endpoint" Binding="{Binding Endpoint}" Width="2*"/><DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="*"/><DataGridTextColumn Header="ms" Binding="{Binding Duration_Ms}" Width="*"/></DataGrid.Columns></DataGrid></GroupBox>
-        </StackPanel></ScrollViewer>
-      </TabItem>
-    </TabControl>
-    <Border Grid.RowSpan="2" Visibility="{Binding IsLoggedOut, Converter={StaticResource BooleanToVisibilityConverter}}" Background="#FF020617">
-      <Border Width="430" Padding="30" CornerRadius="16" Background="#FF0F172A" VerticalAlignment="Center" HorizontalAlignment="Center">
-        <StackPanel>
-          <TextBlock Text="English Flashcard" Foreground="White" FontSize="28" FontWeight="Bold" HorizontalAlignment="Center"/>
-          <TextBlock Text="Đăng nhập để tiếp tục" Foreground="#94A3B8" Margin="0,6,0,20" HorizontalAlignment="Center"/>
-          <TextBlock Text="Họ và tên (chỉ khi đăng ký)" Foreground="#CBD5E1" Visibility="{Binding IsRegistering, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-          <TextBox Text="{Binding RegisterName, UpdateSourceTrigger=PropertyChanged}" Padding="10" Margin="0,4,0,10" Visibility="{Binding IsRegistering, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-          <TextBlock Text="Email" Foreground="#CBD5E1"/>
-          <TextBox Text="{Binding Email, UpdateSourceTrigger=PropertyChanged}" Padding="10" Margin="0,4,0,10"/>
-          <TextBlock Text="Mật khẩu" Foreground="#CBD5E1"/>
-          <PasswordBox x:Name="AuthPasswordBox" PasswordChanged="AuthPasswordBox_OnPasswordChanged" Padding="10" Margin="0,4,0,14"/>
-          <Button Content="Đăng nhập" Command="{Binding LoginCommand}" Padding="10" FontWeight="Bold"/>
-          <Button Content="Tạo tài khoản sinh viên" Command="{Binding ToggleRegisterCommand}" Padding="8" Margin="0,8,0,0"/>
-          <TextBlock Text="{Binding StatusMessage}" Foreground="#FCA5A5" TextWrapping="Wrap" Margin="0,12,0,0"/>
-        </StackPanel>
-      </Border>
-    </Border>
+        <!-- ======================================================== -->
+        <!-- MÀN HÌNH ĐĂNG NHẬP / ĐĂNG KÝ PHONG CÁCH DUOLINGO LIGHT  -->
+        <!-- ======================================================== -->
+        <Grid Visibility="{Binding IsLoggedOut, Converter={StaticResource BooleanToVisibilityConverter}}" Background="#FFFFFF">
+            <Border Width="440" Padding="32" CornerRadius="24" Background="#FFFFFF" BorderBrush="#E5E5E5" BorderThickness="2,2,2,6" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <StackPanel>
+                    <Border Width="68" Height="68" CornerRadius="20" Background="#58CC02" BorderBrush="#58A700" BorderThickness="0,0,0,5" HorizontalAlignment="Center" Margin="0,0,0,14">
+                        <TextBlock Text="🦉" FontSize="36" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <TextBlock Text="LTM Lingo" Foreground="#58CC02" FontSize="30" FontWeight="ExtraBold" HorizontalAlignment="Center"/>
+                    <TextBlock Text="Học từ vựng 3D &amp; Khảo thí tiếng Anh" Foreground="#777777" FontWeight="SemiBold" Margin="0,4,0,22" HorizontalAlignment="Center"/>
+
+                    <TextBlock Text="Họ và tên (khi đăng ký)" Foreground="#3C3C3C" FontWeight="Bold" FontSize="12.5" Visibility="{Binding IsRegistering, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                    <TextBox Text="{Binding RegisterName, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,12" Visibility="{Binding IsRegistering, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+
+                    <TextBlock Text="Email" Foreground="#3C3C3C" FontWeight="Bold" FontSize="12.5"/>
+                    <TextBox Text="{Binding Email, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,12"/>
+
+                    <TextBlock Text="Mật khẩu" Foreground="#3C3C3C" FontWeight="Bold" FontSize="12.5"/>
+                    <PasswordBox x:Name="AuthPasswordBox" PasswordChanged="AuthPasswordBox_OnPasswordChanged" Margin="0,4,0,18"/>
+
+                    <Button Command="{Binding LoginCommand}" Height="46" FontSize="15">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource DuoPrimaryButton}">
+                                <Setter Property="Content" Value="ĐĂNG NHẬP"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsRegistering}" Value="True">
+                                        <Setter Property="Content" Value="ĐĂNG KÝ TÀI KHOẢN"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                    <Button Command="{Binding ToggleRegisterCommand}" Height="42" Margin="0,10,0,0">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource DuoOutlineButton}">
+                                <Setter Property="Content" Value="TẠO TÀI KHOẢN SINH VIÊN"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsRegistering}" Value="True">
+                                        <Setter Property="Content" Value="QUAY LẠI ĐĂNG NHẬP"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+
+                    <TextBlock Text="{Binding StatusMessage}" Foreground="#EA2B2B" FontWeight="SemiBold" TextWrapping="Wrap" HorizontalAlignment="Center" Margin="0,14,0,0"
+                               Visibility="{Binding StatusMessage, Converter={StaticResource HasValueToVisibilityConverter}}"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- LOADING OVERLAY KHI ĐANG GỌI API / GEMINI AI -->
+        <Grid Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" Background="#70FFFFFF">
+            <Border Background="#FFFFFF" BorderBrush="#84D8FF" BorderThickness="2,2,2,5" CornerRadius="18" Padding="24,18" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <StackPanel HorizontalAlignment="Center" MinWidth="260">
+                    <TextBlock Text="⏳ Đang xử lý..." FontSize="17" FontWeight="ExtraBold" Foreground="#1899D6" HorizontalAlignment="Center"/>
+                    <TextBlock Text="{Binding BusyMessage}" FontSize="13" FontWeight="SemiBold" Foreground="#3C3C3C" TextWrapping="Wrap" TextAlignment="Center" Margin="0,8,0,10"/>
+                    <ProgressBar IsIndeterminate="True" Height="10" Foreground="#1CB0F6" Background="#E5E5E5"/>
+                </StackPanel>
+            </Border>
+        </Grid>
     </Grid>
 </Window>
