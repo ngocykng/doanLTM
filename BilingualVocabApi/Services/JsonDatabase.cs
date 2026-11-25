@@ -252,6 +252,42 @@ public class JsonDatabase
         }).ToList();
     }
 
+    public List<Assignment> GetStudentAssignments(string studentId)
+    {
+        var list = _data.Assignments
+            .Where(a => (a.Status == "published" || string.IsNullOrWhiteSpace(a.Status)) &&
+                        (string.IsNullOrWhiteSpace(a.Target_Student_Id) || a.Target_Student_Id == studentId))
+            .ToList();
+
+        return list.Select(a => SanitizeAssignmentForStudent(a)).ToList();
+    }
+
+    public Assignment? GetSanitizedAssignmentForStudent(string id, string studentId)
+    {
+        var a = _data.Assignments.FirstOrDefault(x => x.Id == id);
+        if (a is null) return null;
+        if (a.Status != "published" && !string.IsNullOrWhiteSpace(a.Status)) return null;
+        if (!string.IsNullOrWhiteSpace(a.Target_Student_Id) && a.Target_Student_Id != studentId) return null;
+        return SanitizeAssignmentForStudent(a);
+    }
+
+    private static Assignment SanitizeAssignmentForStudent(Assignment source)
+    {
+        // Tạo bản copy không chứa đáp án đúng để gửi cho sinh viên làm bài
+        var copy = JsonSerializer.Deserialize<Assignment>(JsonSerializer.Serialize(source))!;
+        if (copy.Exam_Structure is not null)
+        {
+            foreach (var section in copy.Exam_Structure.Sections)
+            {
+                foreach (var q in section.Questions)
+                {
+                    q.Correct_Answer = string.Empty;
+                    q.Explanation = null;
+                }
+            }
+        }
+        return copy;
+    }
 
     public Assignment? GetAssignment(string id) => _data.Assignments.FirstOrDefault(a => a.Id == id);
     public Assignment AddAssignment(Assignment assignment) { lock (_sync) { _data.Assignments.Insert(0, assignment); Save(); return assignment; } }
@@ -270,6 +306,37 @@ public class JsonDatabase
             if (updates.Due_Date is not null) a.Due_Date = updates.Due_Date.Trim();
             if (updates.Max_Score.HasValue && updates.Max_Score.Value > 0) a.Max_Score = updates.Max_Score.Value;
             if (updates.Reading_Quiz is not null) a.Reading_Quiz = updates.Reading_Quiz;
+            if (updates.Target_Student_Id is not null) a.Target_Student_Id = updates.Target_Student_Id;
+            if (updates.Target_Student_Name is not null) a.Target_Student_Name = updates.Target_Student_Name;
+            if (updates.Topic_Ids is not null) a.Topic_Ids = updates.Topic_Ids;
+            if (updates.Topic_Names is not null) a.Topic_Names = updates.Topic_Names;
+            if (!string.IsNullOrWhiteSpace(updates.Status)) a.Status = updates.Status;
+            if (updates.Show_Answers.HasValue) a.Show_Answers = updates.Show_Answers.Value;
+            if (updates.Exam_Structure is not null) a.Exam_Structure = updates.Exam_Structure;
+            Save();
+            return a;
+        }
+    }
+
+    public Assignment? PublishAssignment(string id)
+    {
+        lock (_sync)
+        {
+            var a = _data.Assignments.FirstOrDefault(x => x.Id == id);
+            if (a is null) return null;
+            a.Status = "published";
+            Save();
+            return a;
+        }
+    }
+
+    public Assignment? SetShowAnswers(string id, bool showAnswers)
+    {
+        lock (_sync)
+        {
+            var a = _data.Assignments.FirstOrDefault(x => x.Id == id);
+            if (a is null) return null;
+            a.Show_Answers = showAnswers;
             Save();
             return a;
         }
@@ -282,19 +349,133 @@ public class JsonDatabase
         if (!string.IsNullOrWhiteSpace(studentId)) list = list.Where(s => s.Student_Id == studentId);
         if (!string.IsNullOrWhiteSpace(assignmentId)) list = list.Where(s => s.Assignment_Id == assignmentId);
         if (!string.IsNullOrWhiteSpace(status)) list = list.Where(s => s.Status == status);
-        return list.ToList();
+        return list.Select(s =>
+        {
+            var assign = GetAssignment(s.Assignment_Id);
+            s.Show_Answers = assign?.Show_Answers ?? false;
+            if (s.Exam_Review is null && assign?.Exam_Structure is not null)
+                s.Exam_Review = assign.Exam_Structure;
+            return s;
+        }).ToList();
     }
 
-    public Submission? GetSubmission(string id) => _data.Submissions.FirstOrDefault(s => s.Id == id);
+    public List<Submission> GetSubmissionsForStudent(string studentId)
+    {
+        var list = _data.Submissions.Where(s => s.Student_Id == studentId).ToList();
+        return list.Select(s => SanitizeSubmissionForStudent(s)).ToList();
+    }
+
+    public Submission? GetSanitizedSubmissionForStudent(string id, string studentId)
+    {
+        var s = _data.Submissions.FirstOrDefault(x => x.Id == id && x.Student_Id == studentId);
+        if (s is null) return null;
+        return SanitizeSubmissionForStudent(s);
+    }
+
+    private Submission SanitizeSubmissionForStudent(Submission source)
+    {
+        var copy = JsonSerializer.Deserialize<Submission>(JsonSerializer.Serialize(source))!;
+        var assign = GetAssignment(copy.Assignment_Id);
+        bool showAnswers = assign?.Show_Answers == true;
+        copy.Show_Answers = showAnswers;
+
+        if (showAnswers)
+        {
+            copy.Exam_Review = assign?.Exam_Structure;
+        }
+        else
+        {
+            copy.Exam_Review = null;
+            if (copy.Exam_Answers is not null)
+            {
+                foreach (var a in copy.Exam_Answers)
+                {
+                    a.Correct_Answer = null;
+                }
+            }
+        }
+        return copy;
+    }
+
+    public Submission? GetSubmission(string id)
+    {
+        var s = _data.Submissions.FirstOrDefault(x => x.Id == id);
+        if (s is not null)
+        {
+            var assign = GetAssignment(s.Assignment_Id);
+            s.Show_Answers = assign?.Show_Answers ?? false;
+            if (s.Exam_Review is null && assign?.Exam_Structure is not null)
+                s.Exam_Review = assign.Exam_Structure;
+        }
+        return s;
+    }
 
     public Submission AddSubmission(Submission submission)
     {
         lock (_sync)
         {
-            // Tự động chấm phần trắc nghiệm nếu là bài Reading và có câu hỏi trắc nghiệm
-            if (submission.Skill.Equals("reading", StringComparison.OrdinalIgnoreCase))
+            var assign = GetAssignment(submission.Assignment_Id);
+            if (assign?.Exam_Structure is not null)
             {
-                var assign = GetAssignment(submission.Assignment_Id);
+                submission.Skill = "exam";
+                submission.Assignment_Title = assign.Title;
+                double totalPoints = 0;
+                var gradedAnswers = new List<StudentExamAnswer>();
+                var sectionPoints = new Dictionary<string, double>();
+
+                var submittedDict = submission.Exam_Answers?
+                    .ToDictionary(a => a.Question_Number, a => a.Selected_Answer?.Trim() ?? "")
+                    ?? new Dictionary<int, string>();
+
+                foreach (var section in assign.Exam_Structure.Sections)
+                {
+                    double secEarned = 0;
+                    foreach (var q in section.Questions)
+                    {
+                        submittedDict.TryGetValue(q.Question_Number, out var studentAns);
+                        studentAns ??= "";
+
+                        bool isCorrect = false;
+                        if (section.Section_Type.Equals("word_ordering", StringComparison.OrdinalIgnoreCase))
+                        {
+                            var normStudent = NormalizeSentence(studentAns);
+                            var normCorrect = NormalizeSentence(q.Correct_Answer);
+                            isCorrect = !string.IsNullOrWhiteSpace(normStudent) && normStudent.Equals(normCorrect, StringComparison.OrdinalIgnoreCase);
+                        }
+                        else
+                        {
+                            var cleanStudent = CleanOptionLetter(studentAns);
+                            var cleanCorrect = CleanOptionLetter(q.Correct_Answer);
+                            isCorrect = !string.IsNullOrWhiteSpace(cleanStudent) && cleanStudent.Equals(cleanCorrect, StringComparison.OrdinalIgnoreCase);
+                        }
+
+                        double earned = isCorrect ? q.Points : 0.0;
+                        secEarned += earned;
+                        totalPoints += earned;
+
+                        gradedAnswers.Add(new StudentExamAnswer
+                        {
+                            Question_Number = q.Question_Number,
+                            Section_Id = section.Section_Id,
+                            Selected_Answer = studentAns,
+                            Correct_Answer = q.Correct_Answer,
+                            Is_Correct = isCorrect,
+                            Earned_Points = Math.Round(earned, 2),
+                            Max_Points = q.Points
+                        });
+                    }
+                    sectionPoints[section.Section_Id] = Math.Round(secEarned, 2);
+                }
+
+                submission.Exam_Answers = gradedAnswers;
+                submission.Section_Scores = sectionPoints;
+                submission.Auto_Score = Math.Round(totalPoints, 2);
+                submission.Score = submission.Auto_Score;
+                submission.Status = "submitted";
+                submission.Exam_Review = assign.Exam_Structure;
+            }
+            else if (submission.Skill.Equals("reading", StringComparison.OrdinalIgnoreCase))
+            {
                 if (assign is not null && !string.IsNullOrWhiteSpace(assign.Reading_Quiz) && !string.IsNullOrWhiteSpace(submission.Reading_Answers))
                 {
                     try
@@ -311,7 +492,6 @@ public class JsonDatabase
                                     correct++;
                                 }
                             }
-                            // Thang điểm trắc nghiệm tối đa là 5.0 (50%), 5.0 còn lại dành cho câu chủ đề do Expert chấm
                             submission.Reading_Auto_Score = Math.Round((double)correct / questions.Count * 5.0, 1);
                         }
                     }
@@ -323,6 +503,23 @@ public class JsonDatabase
             Save();
             return submission;
         }
+    }
+
+    private static string CleanOptionLetter(string input)
+    {
+        if (string.IsNullOrWhiteSpace(input)) return "";
+        var t = input.Trim();
+        if (t.Length >= 2 && (t[1] == '.' || t[1] == ')' || t[1] == ' ' || t[1] == ':'))
+            return t[..1].ToUpperInvariant();
+        if (t.Length == 1) return t.ToUpperInvariant();
+        return t;
+    }
+
+    private static string NormalizeSentence(string s)
+    {
+        if (string.IsNullOrWhiteSpace(s)) return "";
+        var trimmed = s.Trim().TrimEnd('.', '!', '?', ';', ',');
+        return System.Text.RegularExpressions.Regex.Replace(trimmed, @"\s+", " ");
     }
 
     public Submission? GradeSubmission(string id, double score, string feedback, string gradedBy, string? assessedLevel)

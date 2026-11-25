@@ -149,8 +149,65 @@ var validCefrs = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "A1", "
 var validSkills = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "writing", "speaking", "listening", "reading" };
 
 // ==========================================
-// F4.1 EXPERT: TẠO / XEM / SỬA / XÓA BÀI TẬP
+// F4.1 EXPERT: TẠO / XEM / SỬA / XÓA BÀI TẬP & SINH ĐỀ AI
 // ==========================================
+
+// GET /api/expert/students/{id}/topics - Lấy chủ đề của sinh viên từ F2
+app.MapGet("/api/expert/students/{id}/topics", (HttpRequest request, string id, JsonDatabase db) =>
+{
+    var user = GetAuthUser(request, db);
+    if (user is not null && user.Role.Equals("admin", StringComparison.OrdinalIgnoreCase))
+        return Results.Json(new { error = "Admin không có quyền truy cập phân hệ Khảo thí và chấm thi." }, statusCode: 403);
+    if (user is not null && !user.Role.Equals("expert", StringComparison.OrdinalIgnoreCase))
+        return Results.Json(new { error = "Quyền truy cập bị từ chối. Chỉ Expert mới được thực hiện thao tác này." }, statusCode: 403);
+
+    var student = db.GetUser(id);
+    if (student is null || !student.Role.Equals("student", StringComparison.OrdinalIgnoreCase))
+        return Results.NotFound(new { error = "Không tìm thấy sinh viên." });
+
+    var topics = db.GetTopicsForUser(student.Id);
+    return Results.Json(new { success = true, student, topics });
+});
+
+// POST /api/expert/assignments/generate - AI sinh đề thi theo chủ đề sinh viên (Bản xem trước)
+app.MapPost("/api/expert/assignments/generate", async (HttpRequest request, JsonDatabase db, AiFallbackService ai, JsonElement body) =>
+{
+    var user = GetAuthUser(request, db);
+    if (user is not null && user.Role.Equals("admin", StringComparison.OrdinalIgnoreCase))
+        return Results.Json(new { error = "Admin không có quyền truy cập phân hệ Khảo thí và chấm thi." }, statusCode: 403);
+    if (user is null)
+        user = db.GetUsers().FirstOrDefault(u => u.Role == "expert") ?? new User { Id = "user-expert-root", Name = "Chuyên gia", Role = "expert" };
+    else if (!user.Role.Equals("expert", StringComparison.OrdinalIgnoreCase))
+        return Results.Json(new { error = "Quyền truy cập bị từ chối. Chỉ Expert mới được sinh đề thi." }, statusCode: 403);
+
+    var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true, PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
+    var req = JsonSerializer.Deserialize<ExamGenerationRequestDto>(body.GetRawText(), options);
+    if (req is null || string.IsNullOrWhiteSpace(req.Student_Id))
+        return Results.BadRequest(new { error = "Vui lòng chọn sinh viên cần ra đề." });
+
+    var student = db.GetUser(req.Student_Id);
+    if (student is null)
+        return Results.NotFound(new { error = "Không tìm thấy sinh viên được chỉ định." });
+
+    if (req.Topic_Ids == null || req.Topic_Ids.Count == 0)
+        return Results.BadRequest(new { error = "Vui lòng chọn ít nhất một chủ đề của sinh viên để sinh đề thi." });
+
+    var topics = req.Topic_Ids.Select(tid => db.GetTopic(tid)).Where(t => t is not null).Cast<Topic>().ToList();
+    if (topics.Count == 0)
+        return Results.BadRequest(new { error = "Không tìm thấy chủ đề nào hợp lệ trong dữ liệu sinh viên." });
+
+    var cards = req.Topic_Ids.SelectMany(tid => db.GetCardsByTopic(tid)).ToList();
+
+    try
+    {
+        var examStructure = await ai.GenerateExamAsync(student, topics, cards, req, db.GetAiConfig());
+        return Results.Json(new { success = true, exam_structure = examStructure });
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(new { error = $"Không thể sinh đề thi: {ex.Message}" }, statusCode: 502);
+    }
+});
 
 // GET /api/expert/assignments - Danh sách assignment
 app.MapGet("/api/expert/assignments", (HttpRequest request, string? expert_id, JsonDatabase db) =>
@@ -165,7 +222,20 @@ app.MapGet("/api/expert/assignments", (HttpRequest request, string? expert_id, J
     return Results.Json(new { success = true, assignments = db.GetAssignments(targetExpertId) });
 });
 
-// POST /api/expert/assignments - Tạo assignment mới
+// GET /api/expert/assignments/{id} - Chi tiết assignment
+app.MapGet("/api/expert/assignments/{id}", (HttpRequest request, string id, JsonDatabase db) =>
+{
+    var user = GetAuthUser(request, db);
+    if (user is not null && user.Role.Equals("admin", StringComparison.OrdinalIgnoreCase))
+        return Results.Json(new { error = "Admin không có quyền truy cập phân hệ Khảo thí và chấm thi." }, statusCode: 403);
+    if (user is not null && !user.Role.Equals("expert", StringComparison.OrdinalIgnoreCase))
+        return Results.Json(new { error = "Quyền truy cập bị từ chối. Chỉ Expert mới được xem chi tiết bài tập." }, statusCode: 403);
+
+    var a = db.GetAssignment(id);
+    return a is null ? Results.NotFound(new { error = "Không tìm thấy bài tập." }) : Results.Json(new { success = true, assignment = a });
+});
+
+// POST /api/expert/assignments - Tạo assignment mới (Hỗ trợ cấu trúc đề F4 và legacy)
 app.MapPost("/api/expert/assignments", (HttpRequest request, JsonDatabase db, JsonElement body) =>
 {
     var user = GetAuthUser(request, db);
@@ -175,6 +245,60 @@ app.MapPost("/api/expert/assignments", (HttpRequest request, JsonDatabase db, Js
         user = db.GetUsers().FirstOrDefault(u => u.Role == "expert") ?? new User { Id = "user-expert-root", Name = "Chuyên gia", Role = "expert" };
     else if (!user.Role.Equals("expert", StringComparison.OrdinalIgnoreCase))
         return Results.Json(new { error = "Quyền truy cập bị từ chối. Chỉ Expert mới được tạo bài tập." }, statusCode: 403);
+
+    var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true, PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
+
+    // Hỗ trợ lưu đề thi sinh bằng AI
+    if (body.TryGetProperty("exam_structure", out var esElement) && esElement.ValueKind == JsonValueKind.Object)
+    {
+        var examStruct = JsonSerializer.Deserialize<ExamStructure>(esElement.GetRawText(), options);
+        var titleFromExam = body.TryGetProperty("title", out var et) ? et.GetString() : examStruct?.Exam_Title;
+        var targetLevelExam = body.TryGetProperty("target_level", out var etl) ? etl.GetString() : "B2";
+        var durationExam = body.TryGetProperty("duration_minutes", out var edm) && edm.TryGetInt32(out var edmVal) ? edmVal : (examStruct?.Duration_Minutes ?? 45);
+        var dueDateExam = body.TryGetProperty("due_date", out var edue) ? edue.GetString() : DateTime.UtcNow.AddDays(7).ToString("yyyy-MM-dd");
+        var statusExam = body.TryGetProperty("status", out var est) ? est.GetString() : "draft";
+        var showAnswersExam = body.TryGetProperty("show_answers", out var esa) && esa.GetBoolean();
+        var targetStudentId = body.TryGetProperty("target_student_id", out var etsid) ? etsid.GetString() : examStruct?.Student_Id;
+        var targetStudentName = body.TryGetProperty("target_student_name", out var etsn) ? etsn.GetString() : examStruct?.Student_Name;
+
+        var topicIds = body.TryGetProperty("topic_ids", out var etids) && etids.ValueKind == JsonValueKind.Array
+            ? JsonSerializer.Deserialize<List<string>>(etids.GetRawText(), options) ?? new()
+            : new List<string>();
+        var topicNames = body.TryGetProperty("topic_names", out var etnames) && etnames.ValueKind == JsonValueKind.Array
+            ? JsonSerializer.Deserialize<List<string>>(etnames.GetRawText(), options) ?? new()
+            : new List<string>();
+
+        if (string.IsNullOrWhiteSpace(titleFromExam))
+            return Results.BadRequest(new { error = "Tiêu đề đề thi không được để trống." });
+        if (durationExam <= 0)
+            return Results.BadRequest(new { error = "Thời gian làm bài phải lớn hơn 0 phút." });
+
+        var examAssign = new Assignment
+        {
+            Id = $"assign-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}",
+            Expert_Id = user.Id,
+            Expert_Name = user.Name,
+            Title = titleFromExam.Trim(),
+            Skill = "exam",
+            Target_Level = !string.IsNullOrWhiteSpace(targetLevelExam) ? targetLevelExam.Trim().ToUpperInvariant() : "B2",
+            Duration_Minutes = durationExam,
+            Content = examStruct?.Sections.FirstOrDefault(s => s.Section_Type == "cloze")?.Passage ?? string.Empty,
+            Instructions = "Đề thi gồm các câu hỏi trắc nghiệm và câu sắp xếp từ theo mẫu khảo thí.",
+            Due_Date = dueDateExam,
+            Created_At = DateTime.UtcNow.ToString("O"),
+            Max_Score = examStruct?.Total_Score > 0 ? examStruct.Total_Score : 10.0,
+            Target_Student_Id = targetStudentId,
+            Target_Student_Name = targetStudentName,
+            Topic_Ids = topicIds,
+            Topic_Names = topicNames,
+            Status = string.Equals(statusExam, "published", StringComparison.OrdinalIgnoreCase) ? "published" : "draft",
+            Show_Answers = showAnswersExam,
+            Exam_Structure = examStruct
+        };
+
+        var savedExam = db.AddAssignment(examAssign);
+        return Results.Json(new { success = true, assignment = savedExam }, statusCode: 201);
+    }
 
     var title = body.TryGetProperty("title", out var t) ? t.GetString() : null;
     var skill = body.TryGetProperty("skill", out var s) ? s.GetString() : "writing";
@@ -186,7 +310,6 @@ app.MapPost("/api/expert/assignments", (HttpRequest request, JsonDatabase db, Js
     var maxScore = body.TryGetProperty("max_score", out var ms) && ms.TryGetDouble(out var msVal) ? msVal : 10.0;
     var readingQuiz = body.TryGetProperty("reading_quiz", out var rq) ? (rq.ValueKind == JsonValueKind.String ? rq.GetString() : rq.GetRawText()) : null;
 
-    // Quy tắc kiểm tra dữ liệu
     if (string.IsNullOrWhiteSpace(title))
         return Results.BadRequest(new { error = "Đề bài / tiêu đề không được để trống." });
     if (duration <= 0)
@@ -210,7 +333,8 @@ app.MapPost("/api/expert/assignments", (HttpRequest request, JsonDatabase db, Js
         Due_Date = dueDate,
         Created_At = DateTime.UtcNow.ToString("O"),
         Max_Score = maxScore > 0 ? maxScore : 10.0,
-        Reading_Quiz = readingQuiz
+        Reading_Quiz = readingQuiz,
+        Status = "published"
     };
 
     var saved = db.AddAssignment(a);
@@ -232,9 +356,16 @@ app.MapPut("/api/expert/assignments/{id}", (HttpRequest request, string id, Json
     if (existing is null)
         return Results.NotFound(new { error = "Không tìm thấy bài tập để chỉnh sửa." });
 
-    // Quy tắc: Expert chỉ sửa assignment do chính mình tạo (trừ tài khoản root chuyên gia khi demo)
     if (user is not null && existing.Expert_Id != user.Id && user.Id != "user-expert-root" && !string.IsNullOrWhiteSpace(existing.Expert_Id))
         return Results.Json(new { error = "Bạn chỉ có thể chỉnh sửa bài tập do chính mình tạo." }, statusCode: 403);
+
+    var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true, PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
+
+    ExamStructure? examStruct = null;
+    if (body.TryGetProperty("exam_structure", out var esElement) && esElement.ValueKind == JsonValueKind.Object)
+    {
+        examStruct = JsonSerializer.Deserialize<ExamStructure>(esElement.GetRawText(), options);
+    }
 
     var updates = new AssignmentUpdateDto
     {
@@ -246,18 +377,60 @@ app.MapPut("/api/expert/assignments/{id}", (HttpRequest request, string id, Json
         Instructions = body.TryGetProperty("instructions", out var i) ? i.GetString() : null,
         Due_Date = body.TryGetProperty("due_date", out var due) ? due.GetString() : null,
         Max_Score = body.TryGetProperty("max_score", out var ms) && ms.TryGetDouble(out var msVal) ? msVal : null,
-        Reading_Quiz = body.TryGetProperty("reading_quiz", out var rq) ? (rq.ValueKind == JsonValueKind.String ? rq.GetString() : rq.GetRawText()) : null
+        Reading_Quiz = body.TryGetProperty("reading_quiz", out var rq) ? (rq.ValueKind == JsonValueKind.String ? rq.GetString() : rq.GetRawText()) : null,
+        Target_Student_Id = body.TryGetProperty("target_student_id", out var tsid) ? tsid.GetString() : null,
+        Target_Student_Name = body.TryGetProperty("target_student_name", out var tsn) ? tsn.GetString() : null,
+        Status = body.TryGetProperty("status", out var st) ? st.GetString() : null,
+        Show_Answers = body.TryGetProperty("show_answers", out var sa) ? sa.GetBoolean() : null,
+        Exam_Structure = examStruct
     };
 
     if (updates.Duration_Minutes.HasValue && updates.Duration_Minutes.Value <= 0)
         return Results.BadRequest(new { error = "Thời gian làm bài phải lớn hơn 0 phút." });
     if (!string.IsNullOrWhiteSpace(updates.Target_Level) && !validCefrs.Contains(updates.Target_Level))
         return Results.BadRequest(new { error = "Cấp độ CEFR phải thuộc A1–C2." });
-    if (!string.IsNullOrWhiteSpace(updates.Skill) && !validSkills.Contains(updates.Skill))
-        return Results.BadRequest(new { error = "Kỹ năng phải là writing, speaking, listening hoặc reading." });
 
     var updated = db.UpdateAssignment(id, updates);
     return Results.Json(new { success = true, assignment = updated });
+});
+
+// POST /api/expert/assignments/{id}/publish - Giao đề cho sinh viên (Chuyển Nháp -> Đã giao)
+app.MapPost("/api/expert/assignments/{id}/publish", (HttpRequest request, string id, JsonDatabase db) =>
+{
+    var user = GetAuthUser(request, db);
+    if (user is not null && user.Role.Equals("admin", StringComparison.OrdinalIgnoreCase))
+        return Results.Json(new { error = "Admin không có quyền truy cập phân hệ Khảo thí và chấm thi." }, statusCode: 403);
+    if (user is not null && !user.Role.Equals("expert", StringComparison.OrdinalIgnoreCase))
+        return Results.Json(new { error = "Quyền truy cập bị từ chối. Chỉ Expert mới được giao đề." }, statusCode: 403);
+
+    var existing = db.GetAssignment(id);
+    if (existing is null) return Results.NotFound(new { error = "Không tìm thấy đề thi." });
+
+    if (user is not null && existing.Expert_Id != user.Id && user.Id != "user-expert-root" && !string.IsNullOrWhiteSpace(existing.Expert_Id))
+        return Results.Json(new { error = "Bạn chỉ có thể giao đề do chính mình tạo." }, statusCode: 403);
+
+    var published = db.PublishAssignment(id);
+    return Results.Json(new { success = true, assignment = published, message = "Đã giao đề thi cho sinh viên thành công." });
+});
+
+// PUT /api/expert/assignments/{id}/show-answers - Bật / tắt tính năng cho xem đáp án đúng
+app.MapPut("/api/expert/assignments/{id}/show-answers", (HttpRequest request, string id, JsonDatabase db, JsonElement body) =>
+{
+    var user = GetAuthUser(request, db);
+    if (user is not null && user.Role.Equals("admin", StringComparison.OrdinalIgnoreCase))
+        return Results.Json(new { error = "Admin không có quyền truy cập phân hệ Khảo thí và chấm thi." }, statusCode: 403);
+    if (user is not null && !user.Role.Equals("expert", StringComparison.OrdinalIgnoreCase))
+        return Results.Json(new { error = "Quyền truy cập bị từ chối. Chỉ Expert mới được đổi cài đặt xem đáp án." }, statusCode: 403);
+
+    var existing = db.GetAssignment(id);
+    if (existing is null) return Results.NotFound(new { error = "Không tìm thấy đề thi." });
+
+    if (user is not null && existing.Expert_Id != user.Id && user.Id != "user-expert-root" && !string.IsNullOrWhiteSpace(existing.Expert_Id))
+        return Results.Json(new { error = "Bạn chỉ có thể đổi cài đặt đề do chính mình tạo." }, statusCode: 403);
+
+    bool show = body.TryGetProperty("show_answers", out var sa) && sa.GetBoolean();
+    var updated = db.SetShowAnswers(id, show);
+    return Results.Json(new { success = true, assignment = updated, message = $"Đã {(show ? "bật" : "tắt")} tính năng cho sinh viên xem đáp án đúng." });
 });
 
 // DELETE /api/expert/assignments/{id} - Xóa assignment
@@ -286,17 +459,30 @@ app.MapDelete("/api/expert/assignments/{id}", (HttpRequest request, string id, J
 // F4.2 & F4.4 STUDENT: LÀM BÀI VÀ XEM KẾT QUẢ
 // ==========================================
 
-// GET /api/student/assignments - Danh sách assignment được giao
+// GET /api/student/assignments - Danh sách assignment được giao (Chỉ lấy đề published, bảo mật không lộ đáp án đúng)
 app.MapGet("/api/student/assignments", (HttpRequest request, JsonDatabase db) =>
 {
     var user = GetAuthUser(request, db);
     if (user is not null && user.Role.Equals("admin", StringComparison.OrdinalIgnoreCase))
         return Results.Json(new { error = "Admin không có quyền truy cập phân hệ Khảo thí và chấm thi." }, statusCode: 403);
 
-    return Results.Json(new { success = true, assignments = db.GetAssignments() });
+    var studentId = user?.Id ?? "user-student-root";
+    return Results.Json(new { success = true, assignments = db.GetStudentAssignments(studentId) });
 });
 
-// POST /api/student/submissions - Nộp bài (Hỗ trợ 4 kỹ năng)
+// GET /api/student/assignments/{id} - Lấy chi tiết đề thi làm bài (Đã làm sạch đáp án đúng)
+app.MapGet("/api/student/assignments/{id}", (HttpRequest request, string id, JsonDatabase db) =>
+{
+    var user = GetAuthUser(request, db);
+    if (user is not null && user.Role.Equals("admin", StringComparison.OrdinalIgnoreCase))
+        return Results.Json(new { error = "Admin không có quyền truy cập phân hệ Khảo thí và chấm thi." }, statusCode: 403);
+
+    var studentId = user?.Id ?? "user-student-root";
+    var a = db.GetSanitizedAssignmentForStudent(id, studentId);
+    return a is null ? Results.NotFound(new { error = "Không tìm thấy đề thi hoặc đề chưa được giao." }) : Results.Json(new { success = true, assignment = a });
+});
+
+// POST /api/student/submissions - Nộp bài (Hỗ trợ cấu trúc đề F4 tự chấm và legacy)
 app.MapPost("/api/student/submissions", (HttpRequest request, JsonDatabase db, JsonElement body) =>
 {
     var user = GetAuthUser(request, db);
@@ -309,11 +495,11 @@ app.MapPost("/api/student/submissions", (HttpRequest request, JsonDatabase db, J
 
     var assignmentId = body.TryGetProperty("assignment_id", out var aid) ? aid.GetString() : null;
     if (string.IsNullOrWhiteSpace(assignmentId))
-        return Results.BadRequest(new { error = "Vui lòng chọn bài tập cần nộp (assignment_id)." });
+        return Results.BadRequest(new { error = "Vui lòng chọn bài thi cần nộp (assignment_id)." });
 
     var assignment = db.GetAssignment(assignmentId);
     if (assignment is null)
-        return Results.NotFound(new { error = "Không tìm thấy bài tập." });
+        return Results.NotFound(new { error = "Không tìm thấy bài thi." });
 
     var content = body.TryGetProperty("content", out var c) ? c.GetString() : null;
     var audioUrl = body.TryGetProperty("audio_url", out var au) ? au.GetString() : null;
@@ -321,8 +507,28 @@ app.MapPost("/api/student/submissions", (HttpRequest request, JsonDatabase db, J
     var topicSentence = body.TryGetProperty("topic_sentence", out var ts) ? ts.GetString() : null;
     var durationSpent = body.TryGetProperty("duration_spent", out var ds) && ds.TryGetInt32(out var dsVal) ? dsVal : (int?)null;
 
-    // Kiểm tra tính hợp lệ bài nộp theo kỹ năng
-    if (string.IsNullOrWhiteSpace(content) && string.IsNullOrWhiteSpace(audioUrl) && string.IsNullOrWhiteSpace(readingAnswers) && string.IsNullOrWhiteSpace(topicSentence))
+    var examAnswers = new List<StudentExamAnswer>();
+    if (body.TryGetProperty("answers", out var ansDictElement) && ansDictElement.ValueKind == JsonValueKind.Object)
+    {
+        foreach (var prop in ansDictElement.EnumerateObject())
+        {
+            if (int.TryParse(prop.Name, out int qNum))
+            {
+                examAnswers.Add(new StudentExamAnswer
+                {
+                    Question_Number = qNum,
+                    Selected_Answer = prop.Value.GetString() ?? ""
+                });
+            }
+        }
+    }
+    else if (body.TryGetProperty("exam_answers", out var eaListElement) && eaListElement.ValueKind == JsonValueKind.Array)
+    {
+        var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true, PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
+        examAnswers = JsonSerializer.Deserialize<List<StudentExamAnswer>>(eaListElement.GetRawText(), opts) ?? new();
+    }
+
+    if (examAnswers.Count == 0 && string.IsNullOrWhiteSpace(content) && string.IsNullOrWhiteSpace(audioUrl) && string.IsNullOrWhiteSpace(readingAnswers) && string.IsNullOrWhiteSpace(topicSentence))
         return Results.BadRequest(new { error = "Nội dung bài làm không được để trống." });
 
     var s = new Submission
@@ -335,13 +541,14 @@ app.MapPost("/api/student/submissions", (HttpRequest request, JsonDatabase db, J
         Student_Name = user.Name,
         Student_Code = user.Student_Id,
         Student_Department = user.Department,
-        Content = content ?? string.Empty,
+        Content = content ?? (examAnswers.Count > 0 ? $"Sinh viên đã hoàn thành {examAnswers.Count} câu hỏi của đề thi." : string.Empty),
         Audio_Url = audioUrl,
         Reading_Answers = readingAnswers,
         Topic_Sentence = topicSentence,
         Duration_Spent = durationSpent,
+        Exam_Answers = examAnswers,
         Submitted_At = DateTime.UtcNow.ToString("O"),
-        Status = "pending"
+        Status = "submitted"
     };
 
     var saved = db.AddSubmission(s);
@@ -366,9 +573,6 @@ app.MapPost("/api/student/assignments/{id}/submit", (HttpRequest request, string
     var readingAnswers = body.TryGetProperty("reading_answers", out var ra) ? (ra.ValueKind == JsonValueKind.String ? ra.GetString() : ra.GetRawText()) : null;
     var topicSentence = body.TryGetProperty("topic_sentence", out var ts) ? ts.GetString() : null;
 
-    if (string.IsNullOrWhiteSpace(content) && string.IsNullOrWhiteSpace(audio) && string.IsNullOrWhiteSpace(readingAnswers))
-        return Results.BadRequest(new { error = "Nội dung bài nộp không được để trống." });
-
     var s = new Submission
     {
         Id = $"sub-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}",
@@ -384,7 +588,7 @@ app.MapPost("/api/student/assignments/{id}/submit", (HttpRequest request, string
         Reading_Answers = readingAnswers,
         Topic_Sentence = topicSentence,
         Submitted_At = DateTime.UtcNow.ToString("O"),
-        Status = "pending"
+        Status = "submitted"
     };
 
     return Results.Json(new { success = true, submission = db.AddSubmission(s) }, statusCode: 201);
@@ -397,9 +601,20 @@ app.MapGet("/api/student/submissions", (HttpRequest request, string? student_id,
     if (user is not null && user.Role.Equals("admin", StringComparison.OrdinalIgnoreCase))
         return Results.Json(new { error = "Admin không có quyền truy cập phân hệ Khảo thí và chấm thi." }, statusCode: 403);
 
-    // Sinh viên chỉ xem được kết quả bài nộp của chính mình
     var targetStudentId = (user is not null && user.Role.Equals("student", StringComparison.OrdinalIgnoreCase)) ? user.Id : (student_id ?? "user-student-root");
-    return Results.Json(new { success = true, submissions = db.GetSubmissions(targetStudentId) });
+    return Results.Json(new { success = true, submissions = db.GetSubmissionsForStudent(targetStudentId) });
+});
+
+// GET /api/student/submissions/{id} - Xem chi tiết bài nộp của sinh viên
+app.MapGet("/api/student/submissions/{id}", (HttpRequest request, string id, JsonDatabase db) =>
+{
+    var user = GetAuthUser(request, db);
+    if (user is not null && user.Role.Equals("admin", StringComparison.OrdinalIgnoreCase))
+        return Results.Json(new { error = "Admin không có quyền truy cập phân hệ Khảo thí và chấm thi." }, statusCode: 403);
+
+    var studentId = (user is not null && user.Role.Equals("student", StringComparison.OrdinalIgnoreCase)) ? user.Id : "user-student-root";
+    var sub = db.GetSanitizedSubmissionForStudent(id, studentId);
+    return sub is null ? Results.NotFound(new { error = "Không tìm thấy bài nộp." }) : Results.Json(new { success = true, submission = sub });
 });
 
 // ==========================================
