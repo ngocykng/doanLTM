@@ -116,6 +116,27 @@ public class JsonDatabase
 
     public DatabaseSchema Snapshot() => _data;
 
+    /// <summary>F5.6: đồng bộ dữ liệu hiện tại (JSON/bộ nhớ) sang MySQL.</summary>
+    public bool SyncToMySql(out string message)
+    {
+        lock (_sync)
+        {
+            try
+            {
+                _mysql.Save(_data);
+                StorageMode = "MySQL";
+                message = $"Đã đồng bộ sang MySQL: {_data.Users.Count} người dùng, {_data.Topics.Count} chủ đề, {_data.Vocab_Cards.Count} thẻ, {_data.Assignments.Count} bài tập.";
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "MySQL sync failed.");
+                message = $"Đồng bộ MySQL thất bại: {ex.Message}";
+                return false;
+            }
+        }
+    }
+
     public List<Topic> GetTopics() => _data.Topics.Select(t =>
     {
         t.Card_Count = _data.Vocab_Cards.Count(c => c.Topic_Id == t.Id);

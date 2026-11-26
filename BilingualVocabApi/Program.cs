@@ -96,9 +96,11 @@ app.MapGet("/api/auth/me", (HttpRequest request, JsonDatabase db) =>
     return Results.Json(new { success = true, user = db.GetUsers().FirstOrDefault() });
 });
 
-app.MapGet("/api/auth/users", (JsonDatabase db) => Results.Json(new { success = true, users = db.GetUsers() }));
-app.MapPut("/api/auth/users/{id}", (string id, JsonDatabase db, Dictionary<string, object?> updates) =>
+app.MapGet("/api/auth/users", (HttpRequest request, JsonDatabase db) =>
+    RequireRole(request, db, "admin", "expert") ?? Results.Json(new { success = true, users = db.GetUsers() }));
+app.MapPut("/api/auth/users/{id}", (HttpRequest request, string id, JsonDatabase db, Dictionary<string, object?> updates) =>
 {
+    if (RequireRole(request, db, "admin") is { } denied) return denied;
     if (id == "user-admin-root" || db.GetUser(id)?.Email.Equals("admin@123", StringComparison.OrdinalIgnoreCase) == true)
         return Results.BadRequest(new { error = "Không thể thay đổi tài khoản quản trị cố định." });
     if (updates.TryGetValue("role", out var roleValue) && roleValue?.ToString() is not ("student" or "expert"))
@@ -106,7 +108,13 @@ app.MapPut("/api/auth/users/{id}", (string id, JsonDatabase db, Dictionary<strin
     var updated = db.UpdateUser(id, updates);
     return updated is null ? Results.NotFound(new { error = "Không tìm thấy người dùng" }) : Results.Json(new { success = true, user = updated });
 });
-app.MapDelete("/api/auth/users/{id}", (string id, JsonDatabase db) => db.DeleteUser(id) ? Results.Json(new { success = true }) : Results.NotFound(new { error = "Không tìm thấy người dùng" }));
+app.MapDelete("/api/auth/users/{id}", (HttpRequest request, string id, JsonDatabase db) =>
+{
+    if (RequireRole(request, db, "admin") is { } denied) return denied;
+    if (id == "user-admin-root" || db.GetUser(id)?.Email.Equals("admin@123", StringComparison.OrdinalIgnoreCase) == true)
+        return Results.BadRequest(new { error = "Không thể xóa tài khoản quản trị cố định." });
+    return db.DeleteUser(id) ? Results.Json(new { success = true }) : Results.NotFound(new { error = "Không tìm thấy người dùng" });
+});
 
 // Helper trích xuất thông tin người dùng từ token / headers
 User? GetAuthUser(HttpRequest request, JsonDatabase db)
@@ -142,6 +150,16 @@ User? GetAuthUser(HttpRequest request, JsonDatabase db)
         if (byEmail is not null) return byEmail;
     }
 
+    return null;
+}
+
+// F5: chỉ cho phép Admin truy cập các endpoint quản trị (trả về null nếu hợp lệ)
+IResult? RequireRole(HttpRequest request, JsonDatabase db, params string[] roles)
+{
+    var user = GetAuthUser(request, db);
+    if (user is null) return Results.Json(new { error = "Chưa đăng nhập hoặc phiên đăng nhập không hợp lệ." }, statusCode: 401);
+    if (!roles.Any(r => user.Role.Equals(r, StringComparison.OrdinalIgnoreCase)))
+        return Results.Json(new { error = "Bạn không có quyền truy cập phân hệ Quản trị hệ thống." }, statusCode: 403);
     return null;
 }
 
@@ -711,24 +729,35 @@ app.MapPost("/api/expert/consultations", (JsonDatabase db, JsonElement body) =>
 app.MapGet("/api/expert/students-progress", (JsonDatabase db) => Results.Json(new { success = true, students = db.GetStudentProgress() }));
 app.MapGet("/api/student/consultations", (string? student_id, JsonDatabase db) => Results.Json(new { success = true, consultations = db.GetConsultations(student_id) }));
 
-app.MapGet("/api/admin/stats", (JsonDatabase db) => Results.Json(new { success = true, stats = db.GetAdminStats() }));
-app.MapGet("/api/admin/ai-config", (JsonDatabase db) => Results.Json(new { success = true, config = db.GetAiConfig() }));
-app.MapPut("/api/admin/ai-config", (JsonDatabase db, AiConfig cfg) => Results.Json(new { success = true, config = db.UpdateAiConfig(cfg) }));
-app.MapGet("/api/admin/api-logs", (int? limit, JsonDatabase db) => Results.Json(new { success = true, logs = db.GetApiLogs(limit ?? 50) }));
-app.MapGet("/api/admin/dau-curriculum", (JsonDatabase db) =>
+app.MapGet("/api/admin/stats", (HttpRequest request, JsonDatabase db) =>
+    RequireRole(request, db, "admin") ?? Results.Json(new { success = true, stats = db.GetAdminStats() }));
+app.MapGet("/api/admin/ai-config", (HttpRequest request, JsonDatabase db) =>
+    RequireRole(request, db, "admin") ?? Results.Json(new { success = true, config = db.GetAiConfig() }));
+app.MapPut("/api/admin/ai-config", (HttpRequest request, JsonDatabase db, AiConfig cfg) =>
+    RequireRole(request, db, "admin") ?? Results.Json(new { success = true, config = db.UpdateAiConfig(cfg) }));
+app.MapGet("/api/admin/api-logs", (HttpRequest request, int? limit, JsonDatabase db) =>
+    RequireRole(request, db, "admin") ?? Results.Json(new { success = true, logs = db.GetApiLogs(Math.Clamp(limit ?? 50, 1, 500)) }));
+app.MapGet("/api/admin/dau-curriculum", (HttpRequest request, JsonDatabase db) =>
 {
+    if (RequireRole(request, db, "admin") is { } denied) return denied;
     var topics = db.GetTopics().Where(t => t.Is_Dau_Curriculum || t.Name.StartsWith("DAU:", StringComparison.OrdinalIgnoreCase)).ToList();
     return Results.Json(new { success = true, topics });
 });
-app.MapPut("/api/admin/dau-curriculum", (JsonDatabase db, JsonElement body) =>
+app.MapPut("/api/admin/dau-curriculum", (HttpRequest request, JsonDatabase db, JsonElement body) =>
 {
+    if (RequireRole(request, db, "admin") is { } denied) return denied;
     if (!body.TryGetProperty("topics", out var topicsElement) || topicsElement.ValueKind != JsonValueKind.Array)
         return Results.BadRequest(new { error = "Danh sách chương trình không hợp lệ." });
     var topics = JsonSerializer.Deserialize<List<Topic>>(topicsElement.GetRawText(), new JsonSerializerOptions { PropertyNameCaseInsensitive = true, PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower }) ?? new();
     if (topics.Any(t => string.IsNullOrWhiteSpace(t.Name))) return Results.BadRequest(new { error = "Tên chủ đề không được để trống." });
     return Results.Json(new { success = true, topics = db.ReplaceDauCurriculum(topics) });
 });
-app.MapPost("/api/admin/sync-mysql", () => Results.Json(new { success = true, message = "Bản C# đang dùng JSON local, không yêu cầu MySQL sync." }));
+app.MapPost("/api/admin/sync-mysql", (HttpRequest request, JsonDatabase db) =>
+{
+    if (RequireRole(request, db, "admin") is { } denied) return denied;
+    var ok = db.SyncToMySql(out var message);
+    return Results.Json(new { success = ok, storage = db.StorageMode, message }, statusCode: ok ? 200 : 502);
+});
 
 app.MapPost("/api/vocab/generate", async (JsonDatabase db, AiFallbackService ai, JsonElement body) =>
 {
