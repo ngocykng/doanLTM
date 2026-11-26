@@ -910,7 +910,7 @@ public class MainViewModel : BaseViewModel
 
     private async Task SyncMysqlAsync()
     {
-        try { await _apiClient.SyncMysqlAsync(); StatusMessage = "Backend C# hiện lưu JSON cục bộ; thao tác sync MySQL chưa được cấu hình."; }
+        try { var (_, message) = await _apiClient.SyncMysqlAsync(); StatusMessage = message; await LoadAdminAsync(); }
         catch { StatusMessage = "Không thể gọi chức năng đồng bộ."; }
     }
 

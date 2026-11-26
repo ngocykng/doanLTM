@@ -419,5 +419,18 @@ public class ApiClientService
         using var content = new StringContent(JsonSerializer.Serialize(new { topics }), Encoding.UTF8, "application/json");
         return (await _httpClient.PutAsync("api/admin/dau-curriculum", content)).IsSuccessStatusCode;
     }
-    public async Task<bool> SyncMysqlAsync() => (await _httpClient.PostAsync("api/admin/sync-mysql", new StringContent("{}", Encoding.UTF8, "application/json"))).IsSuccessStatusCode;
+    public async Task<(bool Success, string Message)> SyncMysqlAsync()
+    {
+        using var response = await _httpClient.PostAsync("api/admin/sync-mysql", new StringContent("{}", Encoding.UTF8, "application/json"));
+        var text = await response.Content.ReadAsStringAsync();
+        string message = response.IsSuccessStatusCode ? "Đã đồng bộ MySQL." : $"Đồng bộ thất bại ({(int)response.StatusCode}).";
+        try
+        {
+            using var doc = JsonDocument.Parse(text);
+            if (doc.RootElement.TryGetProperty("message", out var m) && m.GetString() is { Length: > 0 } msg) message = msg;
+            else if (doc.RootElement.TryGetProperty("error", out var e) && e.GetString() is { Length: > 0 } err) message = err;
+        }
+        catch (JsonException) { }
+        return (response.IsSuccessStatusCode, message);
+    }
 }
