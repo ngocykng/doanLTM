@@ -7,7 +7,7 @@
         xmlns:expert="clr-namespace:EnglishFlashcard3D.Views.Expert"
         xmlns:admin="clr-namespace:EnglishFlashcard3D.Views.Admin"
         mc:Ignorable="d"
-        Title="LTM Lingo - Học Tiếng Anh Phong Cách Duolingo"
+        Title="NTTHH Lingo - Học Tiếng Anh Phong Cách Duolingo"
         Height="800"
         Width="1280"
         MinHeight="720"
@@ -37,7 +37,7 @@
                                 <TextBlock Text="🦉" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
                             <StackPanel VerticalAlignment="Center">
-                                <TextBlock Text="LTM Lingo" FontSize="21" FontWeight="ExtraBold" Foreground="#58CC02"/>
+                                <TextBlock Text="NTTHH Lingo" FontSize="19" FontWeight="ExtraBold" Foreground="#58CC02"/>
                                 <TextBlock Text="ENGLISH 3D" FontSize="10" FontWeight="ExtraBold" Foreground="#AFAFAF"/>
                             </StackPanel>
                         </StackPanel>
@@ -276,7 +276,7 @@
                     <Border Width="68" Height="68" CornerRadius="20" Background="#58CC02" BorderBrush="#58A700" BorderThickness="0,0,0,5" HorizontalAlignment="Center" Margin="0,0,0,14">
                         <TextBlock Text="🦉" FontSize="36" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
-                    <TextBlock Text="LTM Lingo" Foreground="#58CC02" FontSize="30" FontWeight="ExtraBold" HorizontalAlignment="Center"/>
+                    <TextBlock Text="NTTHH Lingo" Foreground="#58CC02" FontSize="30" FontWeight="ExtraBold" HorizontalAlignment="Center"/>
                     <TextBlock Text="Học từ vựng 3D &amp; Khảo thí tiếng Anh" Foreground="#777777" FontWeight="SemiBold" Margin="0,4,0,22" HorizontalAlignment="Center"/>
 
                     <TextBlock Text="Họ và tên (khi đăng ký)" Foreground="#3C3C3C" FontWeight="Bold" FontSize="12.5" Visibility="{Binding IsRegistering, Converter={StaticResource BooleanToVisibilityConverter}}"/>
