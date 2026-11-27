@@ -166,6 +166,8 @@ app.MapDelete("/api/auth/users/{id}", (HttpRequest request, string id, JsonDatab
     if (user is null) return Results.Unauthorized();
     if (!user.Role.Equals("admin", StringComparison.OrdinalIgnoreCase))
         return Results.Json(new { error = "Chỉ Admin mới được xóa người dùng." }, statusCode: 403);
+    if (id == "user-admin-root" || db.GetUser(id)?.Email.Equals("admin@123", StringComparison.OrdinalIgnoreCase) == true)
+        return Results.BadRequest(new { error = "Không thể xóa tài khoản quản trị cố định." });
     return db.DeleteUser(id) ? Results.Json(new { success = true }) : Results.NotFound(new { error = "Không tìm thấy người dùng" });
 });
 
