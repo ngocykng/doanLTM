@@ -573,6 +573,9 @@ public class ApiConsultation
     [JsonPropertyName("weaknesses")] public List<string> Weaknesses { get; set; } = new();
     [JsonPropertyName("study_plan")] public string Study_Plan { get; set; } = "";
     [JsonPropertyName("created_at")] public string Created_At { get; set; } = "";
+
+    [JsonIgnore] public string StrengthsSummary => Strengths.Count > 0 ? string.Join(", ", Strengths) : string.Empty;
+    [JsonIgnore] public string WeaknessesSummary => Weaknesses.Count > 0 ? string.Join(", ", Weaknesses) : string.Empty;
 }
 
 public class ConsultationsResponse { [JsonPropertyName("consultations")] public List<ApiConsultation> Consultations { get; set; } = new(); }

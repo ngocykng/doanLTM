@@ -137,11 +137,20 @@
                         </RadioButton>
 
                         <RadioButton GroupName="NavMenu" Style="{StaticResource DuoNavRadioButton}"
+                                     IsChecked="{Binding CurrentNavPage, Converter={StaticResource EqualityToBooleanConverter}, ConverterParameter=ExpertProgress}"
+                                     Command="{Binding NavigateCommand}" CommandParameter="ExpertProgress">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="📊" FontSize="18" Margin="0,0,12,0"/>
+                                <TextBlock Text="TIẾN ĐỘ" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </RadioButton>
+
+                        <RadioButton GroupName="NavMenu" Style="{StaticResource DuoNavRadioButton}"
                                      IsChecked="{Binding CurrentNavPage, Converter={StaticResource EqualityToBooleanConverter}, ConverterParameter=ExpertConsult}"
                                      Command="{Binding NavigateCommand}" CommandParameter="ExpertConsult">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="📊" FontSize="18" Margin="0,0,12,0"/>
-                                <TextBlock Text="TIẾN ĐỘ &amp; TƯ VẤN" VerticalAlignment="Center"/>
+                                <TextBlock Text="🎯" FontSize="18" Margin="0,0,12,0"/>
+                                <TextBlock Text="TƯ VẤN" VerticalAlignment="Center"/>
                             </StackPanel>
                         </RadioButton>
                     </StackPanel>

@@ -90,6 +90,8 @@ public class MainViewModel : BaseViewModel
     private ApiStudentProgressItem? _selectedProgressStudent;
     private string _consultCurrentLevel = "B1";
     private string _consultRecommendedLevel = "B2";
+    private string _consultStrengths = "Từ vựng nền tảng ổn định";
+    private string _consultWeaknesses = "Cần tăng cường kỹ năng Nghe/Đọc";
     private string _consultAdvice = "";
     private string _consultStudyPlan = "Luyện tập 30 phút mỗi ngày với Flashcard 3D và bài tập Reading/Listening.";
 
@@ -131,6 +133,11 @@ public class MainViewModel : BaseViewModel
         StudentProgressList = new ObservableCollection<ApiStudentProgressItem>();
 
         SendConsultationCommand = new RelayCommand(_ => _ = SendConsultationAsync(), _ => IsRole("expert") && SelectedProgressStudent?.User is not null);
+        OpenConsultationForStudentCommand = new RelayCommand(p =>
+        {
+            if (p is ApiStudentProgressItem item) SelectedProgressStudent = item;
+            CurrentNavPage = "ExpertConsult";
+        }, _ => IsRole("expert"));
 
         NavigateCommand = new RelayCommand(p =>
         {
@@ -236,9 +243,12 @@ public class MainViewModel : BaseViewModel
     }
     public string ConsultCurrentLevel { get => _consultCurrentLevel; set => SetField(ref _consultCurrentLevel, value); }
     public string ConsultRecommendedLevel { get => _consultRecommendedLevel; set => SetField(ref _consultRecommendedLevel, value); }
+    public string ConsultStrengths { get => _consultStrengths; set => SetField(ref _consultStrengths, value); }
+    public string ConsultWeaknesses { get => _consultWeaknesses; set => SetField(ref _consultWeaknesses, value); }
     public string ConsultAdvice { get => _consultAdvice; set => SetField(ref _consultAdvice, value); }
     public string ConsultStudyPlan { get => _consultStudyPlan; set => SetField(ref _consultStudyPlan, value); }
     public ICommand SendConsultationCommand { get; }
+    public ICommand OpenConsultationForStudentCommand { get; }
 
     public string CurrentNavPage { get => _currentNavPage; set => SetField(ref _currentNavPage, value); }
     public int TotalXp { get => _totalXp; private set => SetField(ref _totalXp, value); }
@@ -891,10 +901,13 @@ public class MainViewModel : BaseViewModel
                     StudentsList.Add(u);
                 }
 
+                var previousStudentId = SelectedProgressStudent?.User?.Id;
                 foreach (var p in progressTask.Result) StudentProgressList.Add(p);
-                SelectedProgressStudent ??= StudentProgressList.FirstOrDefault();
+                SelectedProgressStudent = StudentProgressList.FirstOrDefault(p => p.User?.Id == previousStudentId)
+                    ?? StudentProgressList.FirstOrDefault();
 
                 foreach (var c in consultsTask.Result) Consultations.Add(c);
+                RaiseCommandStates();
             }
             else if (IsRole("student"))
             {
@@ -1264,22 +1277,32 @@ public class MainViewModel : BaseViewModel
         if (string.IsNullOrWhiteSpace(ConsultAdvice))
         {
             StatusMessage = "Vui lòng nhập nhận xét / lời khuyên học tập.";
+            MessageBox.Show("Hãy nhập nội dung nhận xét & lời khuyên trước khi gửi tư vấn.", "Thiếu nội dung tư vấn", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
+        var targetStudent = SelectedProgressStudent.User;
+        var strengths = SplitTags(ConsultStrengths, "Nền tảng tốt");
+        var weaknesses = SplitTags(ConsultWeaknesses, "Cần luyện thêm");
         try
         {
-            var ok = await _apiClient.CreateConsultationAsync(
-                SelectedProgressStudent.User.Id,
-                SelectedProgressStudent.User.Name,
-                ConsultCurrentLevel,
-                ConsultRecommendedLevel,
-                ConsultAdvice.Trim(),
-                ConsultStudyPlan.Trim());
+            bool ok = false;
+            await RunBusyAsync($"Đang gửi tư vấn cho {targetStudent.Name}...", async () =>
+            {
+                ok = await _apiClient.CreateConsultationAsync(
+                    targetStudent.Id,
+                    targetStudent.Name,
+                    ConsultCurrentLevel,
+                    ConsultRecommendedLevel,
+                    ConsultAdvice.Trim(),
+                    ConsultStudyPlan.Trim(),
+                    strengths,
+                    weaknesses);
+            });
             if (ok)
             {
                 ConsultAdvice = "";
                 await LoadF4Async();
-                StatusMessage = $"Đã gửi tư vấn lộ trình học cho sinh viên {SelectedProgressStudent.User.Name}.";
+                StatusMessage = $"Đã gửi tư vấn lộ trình học cho sinh viên {targetStudent.Name}.";
             }
             else
             {
@@ -1287,6 +1310,15 @@ public class MainViewModel : BaseViewModel
             }
         }
         catch { StatusMessage = "Không kết nối được API để gửi tư vấn."; }
+    }
+
+    private static List<string> SplitTags(string raw, string fallback)
+    {
+        var items = (raw ?? string.Empty)
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .ToList();
+        return items.Count > 0 ? items : new List<string> { fallback };
     }
 
     private async Task LoadAdminAsync()

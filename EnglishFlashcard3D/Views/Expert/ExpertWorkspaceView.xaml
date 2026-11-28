@@ -399,10 +399,10 @@
             </Border>
         </Grid>
 
-        <!-- 4. TIẾN ĐỘ SINH VIÊN & TƯ VẤN -->
-        <Grid Visibility="{Binding CurrentNavPage, Converter={StaticResource EqualityToVisibilityConverter}, ConverterParameter=ExpertConsult}">
+        <!-- 4. TIẾN ĐỘ HỌC TẬP SINH VIÊN -->
+        <Grid Visibility="{Binding CurrentNavPage, Converter={StaticResource EqualityToVisibilityConverter}, ConverterParameter=ExpertProgress}">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="400"/>
+                <ColumnDefinition Width="420"/>
                 <ColumnDefinition Width="14"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
@@ -441,15 +441,104 @@
             </Border>
 
             <Border Grid.Column="2" Style="{StaticResource DuoCardBorder}">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
+                <StackPanel>
+                    <TextBlock Text="📊 CHI TIẾT TIẾN ĐỘ SINH VIÊN" FontSize="18" FontWeight="ExtraBold" Foreground="#1899D6" Margin="0,0,0,12"/>
+                    <Border Background="#F7F7F7" BorderBrush="#E5E5E5" BorderThickness="2" CornerRadius="14" Padding="14" Margin="0,0,0,14">
+                        <StackPanel>
+                            <TextBlock Text="{Binding SelectedProgressStudent.User.Name, FallbackValue='Chưa chọn sinh viên'}" FontSize="17" FontWeight="ExtraBold" Foreground="#3C3C3C"/>
+                            <TextBlock Text="{Binding SelectedProgressStudent.User.Email}" Foreground="#777777" FontSize="12" Margin="0,2,0,10"/>
+                            <UniformGrid Columns="2" Margin="0,4,0,0">
+                                <Border Background="#FFFFFF" BorderBrush="#E5E5E5" BorderThickness="1.5" CornerRadius="10" Padding="10" Margin="0,0,6,6">
+                                    <StackPanel>
+                                        <TextBlock Text="TỪ VỰNG ĐÃ THUỘC" Foreground="#777777" FontWeight="Bold" FontSize="11"/>
+                                        <TextBlock FontSize="16" FontWeight="ExtraBold" Foreground="#58A700">
+                                            <Run Text="{Binding SelectedProgressStudent.Learned_Cards, FallbackValue='0'}"/>
+                                            <Run Text=" / "/>
+                                            <Run Text="{Binding SelectedProgressStudent.Total_Cards, FallbackValue='0'}"/>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border>
+                                <Border Background="#FFFFFF" BorderBrush="#E5E5E5" BorderThickness="1.5" CornerRadius="10" Padding="10" Margin="6,0,0,6">
+                                    <StackPanel>
+                                        <TextBlock Text="TỈ LỆ GHI NHỚ" Foreground="#777777" FontWeight="Bold" FontSize="11"/>
+                                        <TextBlock Text="{Binding SelectedProgressStudent.Retention_Rate, StringFormat='{}{0}%', FallbackValue='0%'}" FontSize="16" FontWeight="ExtraBold" Foreground="#1899D6"/>
+                                    </StackPanel>
+                                </Border>
+                                <Border Background="#FFFFFF" BorderBrush="#E5E5E5" BorderThickness="1.5" CornerRadius="10" Padding="10" Margin="0,6,6,0">
+                                    <StackPanel>
+                                        <TextBlock Text="ĐIỂM TRUNG BÌNH" Foreground="#777777" FontWeight="Bold" FontSize="11"/>
+                                        <TextBlock Text="{Binding SelectedProgressStudent.Average_Score, StringFormat='{}{0:F1} đ', FallbackValue='0.0 đ'}" FontSize="16" FontWeight="ExtraBold" Foreground="#CC7800"/>
+                                    </StackPanel>
+                                </Border>
+                                <Border Background="#FFFFFF" BorderBrush="#E5E5E5" BorderThickness="1.5" CornerRadius="10" Padding="10" Margin="6,6,0,0">
+                                    <StackPanel>
+                                        <TextBlock Text="TRÌNH ĐỘ CEFR HIỆN TẠI" Foreground="#777777" FontWeight="Bold" FontSize="11"/>
+                                        <TextBlock Text="{Binding SelectedProgressStudent.Assessed_Cefr, FallbackValue='B1'}" FontSize="16" FontWeight="ExtraBold" Foreground="#A560E8"/>
+                                    </StackPanel>
+                                </Border>
+                            </UniformGrid>
+                        </StackPanel>
+                    </Border>
+                    <Button Content="🎯 TƯ VẤN SINH VIÊN NÀY" Command="{Binding OpenConsultationForStudentCommand}" CommandParameter="{Binding SelectedProgressStudent}" Style="{StaticResource DuoPrimaryButton}" Height="44" FontSize="14"/>
+                </StackPanel>
+            </Border>
+        </Grid>
 
-                    <StackPanel Grid.Row="0" Margin="0,0,0,14">
-                        <TextBlock Text="📩 GỬI TƯ VẤN LỘ TRÌNH HỌC" FontSize="17" FontWeight="ExtraBold" Foreground="#1899D6" Margin="0,0,0,6"/>
-                        <TextBlock Text="{Binding SelectedProgressStudent.User.Name, StringFormat='Sinh viên: {0}', FallbackValue='Chọn sinh viên bên trái'}" Foreground="#58A700" FontWeight="ExtraBold" Margin="0,0,0,8"/>
+        <!-- 5. TƯ VẤN LỘ TRÌNH HỌC TẬP CHO SINH VIÊN -->
+        <Grid Visibility="{Binding CurrentNavPage, Converter={StaticResource EqualityToVisibilityConverter}, ConverterParameter=ExpertConsult}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="340"/>
+                <ColumnDefinition Width="14"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Style="{StaticResource DuoCardBorder}">
+                <DockPanel>
+                    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+                        <TextBlock Text="Chọn sinh viên tư vấn" FontSize="17" FontWeight="ExtraBold" Foreground="#3C3C3C" VerticalAlignment="Center"/>
+                        <Button Content="↻" Command="{Binding RefreshF4Command}" Style="{StaticResource DuoOutlineButton}" DockPanel.Dock="Right" Padding="10,5"/>
+                    </DockPanel>
+                    <ListBox ItemsSource="{Binding StudentProgressList}" SelectedItem="{Binding SelectedProgressStudent}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="#FFFFFF" BorderBrush="#E5E5E5" BorderThickness="2,2,2,4" CornerRadius="14" Padding="12">
+                                    <StackPanel>
+                                        <DockPanel>
+                                            <Border Background="#F0FBE8" CornerRadius="6" Padding="7,2" DockPanel.Dock="Right">
+                                                <TextBlock Text="{Binding Assessed_Cefr}" Foreground="#58A700" FontSize="11" FontWeight="ExtraBold"/>
+                                            </Border>
+                                            <TextBlock Text="{Binding User.Name}" FontWeight="ExtraBold" FontSize="14" Foreground="#3C3C3C"/>
+                                        </DockPanel>
+                                        <TextBlock Text="{Binding User.Email}" Foreground="#777777" FontSize="11" Margin="0,2,0,4"/>
+                                        <TextBlock Foreground="#1899D6" FontWeight="Bold" FontSize="11.5">
+                                            <Run Text="{Binding Learned_Cards, StringFormat='Thuộc: {0}/'}"/>
+                                            <Run Text="{Binding Total_Cards}"/>
+                                            <Run Text="{Binding Average_Score, StringFormat=' • TB: {0:F1}đ'}"/>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
+            </Border>
+
+            <Border Grid.Column="2" Style="{StaticResource DuoCardBorder}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <TextBlock Text="🎯 TƯ VẤN LỘ TRÌNH HỌC CHO SINH VIÊN" FontSize="18" FontWeight="ExtraBold" Foreground="#1899D6" Margin="0,0,0,8"/>
+
+                        <Border Background="#F0FAFF" BorderBrush="#84D8FF" BorderThickness="1.5" CornerRadius="12" Padding="10" Margin="0,0,0,10">
+                            <DockPanel>
+                                <Border Background="#F0FBE8" CornerRadius="8" Padding="8,4" DockPanel.Dock="Right" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding SelectedProgressStudent.Assessed_Cefr, StringFormat='CEFR: {0}', FallbackValue='CEFR: B1'}" Foreground="#58A700" FontWeight="ExtraBold" FontSize="12"/>
+                                </Border>
+                                <StackPanel>
+                                    <TextBlock Text="{Binding SelectedProgressStudent.User.Name, StringFormat='Sinh viên: {0}', FallbackValue='Chọn sinh viên ở danh sách bên trái'}" Foreground="#3C3C3C" FontWeight="ExtraBold" FontSize="14"/>
+                                    <TextBlock Text="{Binding SelectedProgressStudent.User.Email}" Foreground="#777777" FontSize="11.5"/>
+                                </StackPanel>
+                            </DockPanel>
+                        </Border>
 
                         <Grid Margin="0,0,0,8">
                             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
@@ -457,33 +546,52 @@
                             <StackPanel Grid.Column="2"><TextBlock Text="CEFR khuyến nghị:" Foreground="#777777" FontWeight="Bold" FontSize="12" Margin="0,0,0,3"/><ComboBox ItemsSource="{Binding CefrLevels}" SelectedItem="{Binding ConsultRecommendedLevel}"/></StackPanel>
                         </Grid>
 
-                        <TextBlock Text="Nhận xét &amp; Lời khuyên:" Foreground="#777777" FontWeight="Bold" FontSize="12" Margin="0,0,0,3"/>
-                        <TextBox Text="{Binding ConsultAdvice, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" MinHeight="60" TextWrapping="Wrap" Margin="0,0,0,8"/>
-                        <TextBlock Text="Kế hoạch học tập đề xuất:" Foreground="#777777" FontWeight="Bold" FontSize="12" Margin="0,0,0,3"/>
-                        <TextBox Text="{Binding ConsultStudyPlan, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" MinHeight="48" TextWrapping="Wrap" Margin="0,0,0,10"/>
-                        <Button Content="📩 GỬI TƯ VẤN CHO SINH VIÊN" Command="{Binding SendConsultationCommand}" Style="{StaticResource DuoPrimaryButton}"/>
-                    </StackPanel>
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Điểm mạnh (cách nhau dấu phẩy):" Foreground="#777777" FontWeight="Bold" FontSize="12" Margin="0,0,0,3"/>
+                                <TextBox Text="{Binding ConsultStrengths, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Điểm cần cải thiện:" Foreground="#777777" FontWeight="Bold" FontSize="12" Margin="0,0,0,3"/>
+                                <TextBox Text="{Binding ConsultWeaknesses, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+                        </Grid>
 
-                    <DockPanel Grid.Row="1">
-                        <TextBlock Text="LỊCH SỬ TƯ VẤN ĐÃ GỬI" DockPanel.Dock="Top" Foreground="#777777" FontWeight="ExtraBold" FontSize="12" Margin="0,0,0,6"/>
-                        <ListBox ItemsSource="{Binding Consultations}">
-                            <ListBox.ItemTemplate>
+                        <TextBlock Text="Nhận xét &amp; Lời khuyên:" Foreground="#777777" FontWeight="Bold" FontSize="12" Margin="0,0,0,3"/>
+                        <TextBox Text="{Binding ConsultAdvice, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" MinHeight="64" TextWrapping="Wrap" Margin="0,0,0,8"/>
+
+                        <TextBlock Text="Kế hoạch học tập đề xuất:" Foreground="#777777" FontWeight="Bold" FontSize="12" Margin="0,0,0,3"/>
+                        <TextBox Text="{Binding ConsultStudyPlan, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" MinHeight="52" TextWrapping="Wrap" Margin="0,0,0,10"/>
+
+                        <Button Content="📩 GỬI TƯ VẤN CHO SINH VIÊN" Command="{Binding SendConsultationCommand}" Style="{StaticResource DuoPrimaryButton}" Height="42" Margin="0,0,0,16"/>
+
+                        <TextBlock Text="LỊCH SỬ TƯ VẤN ĐÃ GỬI" Foreground="#777777" FontWeight="ExtraBold" FontSize="12" Margin="0,0,0,6"/>
+                        <ItemsControl ItemsSource="{Binding Consultations}">
+                            <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Background="#F7F7F7" BorderBrush="#E5E5E5" BorderThickness="1.5" CornerRadius="12" Padding="10">
+                                    <Border Background="#F7F7F7" BorderBrush="#E5E5E5" BorderThickness="1.5" CornerRadius="12" Padding="12" Margin="0,0,0,8">
                                         <StackPanel>
                                             <DockPanel>
-                                                <TextBlock Text="{Binding Student_Name}" FontWeight="ExtraBold" Foreground="#1899D6"/>
-                                                <TextBlock Text="{Binding Recommended_Level, StringFormat='Mục tiêu: {0}'}" Foreground="#58A700" DockPanel.Dock="Right" FontWeight="ExtraBold"/>
+                                                <TextBlock Text="{Binding Student_Name}" FontWeight="ExtraBold" Foreground="#1899D6" FontSize="14"/>
+                                                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                                                    <TextBlock Text="{Binding Current_Level, StringFormat='{}{0} → '}" Foreground="#777777" FontWeight="Bold" FontSize="12"/>
+                                                    <TextBlock Text="{Binding Recommended_Level}" Foreground="#58A700" FontWeight="ExtraBold" FontSize="12"/>
+                                                </StackPanel>
                                             </DockPanel>
-                                            <TextBlock Text="{Binding Advice}" Foreground="#3C3C3C" TextWrapping="Wrap" FontSize="12.5" Margin="0,4,0,2"/>
-                                            <TextBlock Text="{Binding Study_Plan}" Foreground="#777777" TextWrapping="Wrap" FontSize="11.5"/>
+                                            <TextBlock Text="{Binding Advice}" Foreground="#3C3C3C" TextWrapping="Wrap" FontSize="12.5" Margin="0,4,0,4"/>
+                                            <TextBlock Text="{Binding StrengthsSummary, StringFormat='✅ Điểm mạnh: {0}'}" Foreground="#58A700" FontWeight="SemiBold" TextWrapping="Wrap" FontSize="11.5"
+                                                       Visibility="{Binding StrengthsSummary, Converter={StaticResource HasValueToVisibilityConverter}}"/>
+                                            <TextBlock Text="{Binding WeaknessesSummary, StringFormat='⚠ Cần cải thiện: {0}'}" Foreground="#CC7800" FontWeight="SemiBold" TextWrapping="Wrap" FontSize="11.5"
+                                                       Visibility="{Binding WeaknessesSummary, Converter={StaticResource HasValueToVisibilityConverter}}"/>
+                                            <TextBlock Text="{Binding Study_Plan, StringFormat='📅 Kế hoạch: {0}'}" Foreground="#7B35BD" TextWrapping="Wrap" FontSize="11.5" Margin="0,3,0,0"/>
                                         </StackPanel>
                                     </Border>
                                 </DataTemplate>
-                            </ListBox.ItemTemplate>
-                        </ListBox>
-                    </DockPanel>
-                </Grid>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </ScrollViewer>
             </Border>
         </Grid>
     </Grid>

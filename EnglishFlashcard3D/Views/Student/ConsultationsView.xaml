@@ -28,6 +28,10 @@
                                     </StackPanel>
                                 </DockPanel>
                                 <TextBlock Text="{Binding Advice, StringFormat='Lời khuyên: {0}'}" Foreground="#3C3C3C" TextWrapping="Wrap" FontSize="13.5" Margin="0,0,0,6"/>
+                                <TextBlock Text="{Binding StrengthsSummary, StringFormat='✅ Điểm mạnh: {0}'}" Foreground="#58A700" FontWeight="SemiBold" TextWrapping="Wrap" FontSize="12.5" Margin="0,0,0,4"
+                                           Visibility="{Binding StrengthsSummary, Converter={StaticResource HasValueToVisibilityConverter}}"/>
+                                <TextBlock Text="{Binding WeaknessesSummary, StringFormat='⚠ Cần cải thiện: {0}'}" Foreground="#CC7800" FontWeight="SemiBold" TextWrapping="Wrap" FontSize="12.5" Margin="0,0,0,6"
+                                           Visibility="{Binding WeaknessesSummary, Converter={StaticResource HasValueToVisibilityConverter}}"/>
                                 <Border Background="#F7EBFF" BorderBrush="#CE82FF" BorderThickness="1.5" CornerRadius="10" Padding="10">
                                     <TextBlock Text="{Binding Study_Plan, StringFormat='📅 Kế hoạch: {0}'}" Foreground="#7B35BD" TextWrapping="Wrap" FontWeight="SemiBold" FontSize="12.5"/>
                                 </Border>
