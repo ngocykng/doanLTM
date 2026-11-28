@@ -118,6 +118,24 @@ public class ApiVocabCard
 
     [JsonPropertyName("learned")]
     public bool Learned { get; set; }
+
+    [JsonPropertyName("note")]
+    public string? Note { get; set; }
+
+    [JsonPropertyName("review_count")]
+    public int Review_Count { get; set; }
+
+    [JsonPropertyName("last_reviewed_at")]
+    public string? Last_Reviewed_At { get; set; }
+
+    [JsonPropertyName("next_review_at")]
+    public string? Next_Review_At { get; set; }
+
+    [JsonPropertyName("interval_days")]
+    public int Interval_Days { get; set; }
+
+    [JsonPropertyName("ease_factor")]
+    public double Ease_Factor { get; set; } = 2.5;
 }
 
 public class AssignmentsResponse
@@ -127,6 +145,21 @@ public class AssignmentsResponse
 
     [JsonPropertyName("assignments")]
     public List<ApiAssignment> Assignments { get; set; } = new();
+}
+
+public class ApiReadingQuizQuestion
+{
+    [JsonPropertyName("id")]
+    public int Id { get; set; }
+
+    [JsonPropertyName("question")]
+    public string Question { get; set; } = string.Empty;
+
+    [JsonPropertyName("options")]
+    public List<string> Options { get; set; } = new();
+
+    [JsonPropertyName("correct_answer")]
+    public string Correct_Answer { get; set; } = string.Empty;
 }
 
 public class ApiAssignment
@@ -158,6 +191,9 @@ public class ApiAssignment
     [JsonPropertyName("instructions")]
     public string Instructions { get; set; } = string.Empty;
 
+    [JsonPropertyName("reference_media_url")]
+    public string? Reference_Media_Url { get; set; }
+
     [JsonPropertyName("due_date")]
     public string? Due_Date { get; set; }
 
@@ -181,6 +217,9 @@ public class ApiAssignment
 
     [JsonPropertyName("topic_names")]
     public List<string> Topic_Names { get; set; } = new();
+
+    [JsonIgnore]
+    public string TopicSummary => Topic_Names is { Count: > 0 } ? string.Join(", ", Topic_Names) : string.Empty;
 
     [JsonPropertyName("status")]
     public string Status { get; set; } = "draft"; // draft, published
@@ -304,6 +343,9 @@ public class ExamGenerationRequestDto
 
     [JsonPropertyName("topic_ids")]
     public List<string> Topic_Ids { get; set; } = new();
+
+    [JsonPropertyName("custom_topic")]
+    public string? Custom_Topic { get; set; }
 
     [JsonPropertyName("cefr_level")]
     public string Cefr_Level { get; set; } = "B2";
@@ -516,3 +558,56 @@ public class ApiLogItem
     [JsonPropertyName("duration_ms")] public int Duration_Ms { get; set; }
 }
 public class LogsResponse { [JsonPropertyName("logs")] public List<ApiLogItem> Logs { get; set; } = new(); }
+
+public class ApiConsultation
+{
+    [JsonPropertyName("id")] public string Id { get; set; } = "";
+    [JsonPropertyName("expert_id")] public string Expert_Id { get; set; } = "";
+    [JsonPropertyName("expert_name")] public string Expert_Name { get; set; } = "";
+    [JsonPropertyName("student_id")] public string Student_Id { get; set; } = "";
+    [JsonPropertyName("student_name")] public string Student_Name { get; set; } = "";
+    [JsonPropertyName("current_level")] public string Current_Level { get; set; } = "B1";
+    [JsonPropertyName("recommended_level")] public string Recommended_Level { get; set; } = "B2";
+    [JsonPropertyName("advice")] public string Advice { get; set; } = "";
+    [JsonPropertyName("strengths")] public List<string> Strengths { get; set; } = new();
+    [JsonPropertyName("weaknesses")] public List<string> Weaknesses { get; set; } = new();
+    [JsonPropertyName("study_plan")] public string Study_Plan { get; set; } = "";
+    [JsonPropertyName("created_at")] public string Created_At { get; set; } = "";
+
+    [JsonIgnore] public string StrengthsSummary => Strengths.Count > 0 ? string.Join(", ", Strengths) : string.Empty;
+    [JsonIgnore] public string WeaknessesSummary => Weaknesses.Count > 0 ? string.Join(", ", Weaknesses) : string.Empty;
+}
+
+public class ConsultationsResponse { [JsonPropertyName("consultations")] public List<ApiConsultation> Consultations { get; set; } = new(); }
+
+public class ApiStudentProgressItem
+{
+    [JsonPropertyName("user")] public AuthUser? User { get; set; }
+    [JsonPropertyName("total_cards")] public int Total_Cards { get; set; }
+    [JsonPropertyName("learned_cards")] public int Learned_Cards { get; set; }
+    [JsonPropertyName("retention_rate")] public int Retention_Rate { get; set; }
+    [JsonPropertyName("submissions_count")] public int Submissions_Count { get; set; }
+    [JsonPropertyName("average_score")] public double Average_Score { get; set; }
+    [JsonPropertyName("assessed_cefr")] public string Assessed_Cefr { get; set; } = "B2";
+    [JsonPropertyName("recent_activity")] public string Recent_Activity { get; set; } = "";
+}
+
+public class StudentsProgressResponse { [JsonPropertyName("students")] public List<ApiStudentProgressItem> Students { get; set; } = new(); }
+
+public class SkillAssignmentDraftDto
+{
+    [JsonPropertyName("topic")] public string Topic { get; set; } = string.Empty;
+    [JsonPropertyName("skill")] public string Skill { get; set; } = "reading";
+    [JsonPropertyName("target_level")] public string Target_Level { get; set; } = "B2";
+    [JsonPropertyName("title")] public string Title { get; set; } = string.Empty;
+    [JsonPropertyName("instructions")] public string Instructions { get; set; } = string.Empty;
+    [JsonPropertyName("content")] public string Content { get; set; } = string.Empty;
+    [JsonPropertyName("questions")] public List<ApiReadingQuizQuestion> Questions { get; set; } = new();
+}
+
+public class GenerateSkillAssignmentResponse
+{
+    [JsonPropertyName("success")] public bool Success { get; set; }
+    [JsonPropertyName("draft")] public SkillAssignmentDraftDto? Draft { get; set; }
+    [JsonPropertyName("error")] public string? Error { get; set; }
+}

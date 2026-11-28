@@ -45,6 +45,12 @@ public class VocabCard
     public string Example_Meaning_Vi { get; set; } = string.Empty;
     public string? Difficulty { get; set; }
     public bool Learned { get; set; }
+    public string? Note { get; set; }
+    public int Review_Count { get; set; }
+    public string? Last_Reviewed_At { get; set; }
+    public string? Next_Review_At { get; set; }
+    public int Interval_Days { get; set; }
+    public double Ease_Factor { get; set; } = 2.5;
 }
 
 public class Assignment
@@ -155,6 +161,7 @@ public class ExamGenerationRequestDto
 {
     public string Student_Id { get; set; } = string.Empty;
     public List<string> Topic_Ids { get; set; } = new();
+    public string? Custom_Topic { get; set; }
     public string Cefr_Level { get; set; } = "B2";
     public bool Include_Signs { get; set; } = true;
     public int Signs_Count { get; set; } = 2;
@@ -188,6 +195,17 @@ public class ReadingQuizQuestion
     public string Correct_Answer { get; set; } = string.Empty;
 }
 
+public class SkillAssignmentDraft
+{
+    public string Topic { get; set; } = string.Empty;
+    public string Skill { get; set; } = "reading";
+    public string Target_Level { get; set; } = "B2";
+    public string Title { get; set; } = string.Empty;
+    public string Instructions { get; set; } = string.Empty;
+    public string Content { get; set; } = string.Empty;
+    public List<ReadingQuizQuestion> Questions { get; set; } = new();
+}
+
 public class AssignmentCreateDto
 {
     public string Title { get; set; } = string.Empty;
@@ -196,6 +214,7 @@ public class AssignmentCreateDto
     public int Duration_Minutes { get; set; } = 45;
     public string Content { get; set; } = string.Empty;
     public string Instructions { get; set; } = string.Empty;
+    public string? Reference_Media_Url { get; set; }
     public string? Due_Date { get; set; }
     public double Max_Score { get; set; } = 10.0;
     public string? Reading_Quiz { get; set; }
@@ -216,6 +235,7 @@ public class AssignmentUpdateDto
     public int? Duration_Minutes { get; set; }
     public string? Content { get; set; }
     public string? Instructions { get; set; }
+    public string? Reference_Media_Url { get; set; }
     public string? Due_Date { get; set; }
     public double? Max_Score { get; set; }
     public string? Reading_Quiz { get; set; }

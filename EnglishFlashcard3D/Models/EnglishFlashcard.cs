@@ -16,6 +16,9 @@ public class EnglishFlashcard : INotifyPropertyChanged
     private int _reviewCount;
     private bool _isMastered;
     private DateTime? _lastReviewedAt;
+    private DateTime? _nextReviewAt;
+    private int _intervalDays;
+    private double _easeFactor = 2.5;
 
     public string Id
     {
@@ -91,9 +94,35 @@ public class EnglishFlashcard : INotifyPropertyChanged
         set => SetField(ref _lastReviewedAt, value);
     }
 
+    public DateTime? NextReviewAt
+    {
+        get => _nextReviewAt;
+        set
+        {
+            if (SetField(ref _nextReviewAt, value))
+                OnPropertyChanged(nameof(ScheduleDisplayText));
+        }
+    }
+
+    public int IntervalDays
+    {
+        get => _intervalDays;
+        set => SetField(ref _intervalDays, value);
+    }
+
+    public double EaseFactor
+    {
+        get => _easeFactor;
+        set => SetField(ref _easeFactor, value);
+    }
+
+    public string ScheduleDisplayText => NextReviewAt.HasValue
+        ? $"Ôn lại: {NextReviewAt.Value.ToLocalTime():dd/MM}"
+        : "Chưa lên lịch";
+
     public string StatusBadgeText => IsMastered ? "✓ Đã thuộc" : "⏳ Cần ôn tập";
-    public string StatusBadgeBackground => IsMastered ? "#15803D" : "#334155";
-    public string StatusBadgeForeground => IsMastered ? "#86EFAC" : "#94A3B8";
+    public string StatusBadgeBackground => IsMastered ? "#F0FBE8" : "#FFF7D6";
+    public string StatusBadgeForeground => IsMastered ? "#58A700" : "#CC7800";
 
     public event PropertyChangedEventHandler? PropertyChanged;
 

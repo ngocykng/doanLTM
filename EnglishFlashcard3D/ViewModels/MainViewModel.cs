@@ -9,15 +9,17 @@ namespace EnglishFlashcard3D.ViewModels;
 public class MainViewModel : BaseViewModel
 {
     private readonly ApiClientService _apiClient;
-    private readonly DataStorageService _storageService;
+    private readonly AudioService _mediaAudioService = new();
     private string _email = string.Empty;
     private string _password = string.Empty;
     private string _registerName = string.Empty;
     private bool _isRegistering;
     private int _activeTabIndex;
-    private string _statusMessage = "Sẵn sàng";
+    private string _statusMessage = string.Empty;
     private bool _isLoggedIn;
     private bool _isTopicBusy;
+    private bool _isBusy;
+    private string _busyMessage = string.Empty;
     private TopicDeck? _selectedTopic;
     private string _newTopicName = string.Empty;
     private string _selectedCefr = "B1";
@@ -27,12 +29,15 @@ public class MainViewModel : BaseViewModel
     private AuthUser? _selectedUser;
     private ApiTopic? _selectedCurriculum;
     private string _assignmentTitle = "";
+    private string _assignmentTopic = "";
+    private bool _isGeneratingSkillAssignment = false;
     private string _assignmentInstructions = "";
     private string _assignmentContent = "";
     private int _assignmentDuration = 45;
     private string _assignmentReadingQuiz = "";
+    private string _assignmentMediaUrl = "";
     private bool _isEditingAssignment = false;
-    private string _assignmentSkill = "writing";
+    private string _assignmentSkill = "reading";
     private string _assignmentDueDate = DateTime.Today.AddDays(7).ToString("yyyy-MM-dd");
     private string _submissionContent = "";
     private string _studentAudioUrl = "";
@@ -55,6 +60,7 @@ public class MainViewModel : BaseViewModel
     // ==========================================
     private AuthUser? _selectedExamStudent;
     private ApiTopic? _selectedExamTopic;
+    private string _examTopicInput = string.Empty;
     private string _examCefrLevel = "B2";
     private bool _includeSigns = true;
     private int _signsCount = 2;
@@ -80,13 +86,28 @@ public class MainViewModel : BaseViewModel
     private System.Windows.Threading.DispatcherTimer? _examTimer;
     private int _examRemainingSeconds = 2700;
 
+    // Tư vấn & Tiến độ sinh viên (F4)
+    private ApiStudentProgressItem? _selectedProgressStudent;
+    private string _consultCurrentLevel = "B1";
+    private string _consultRecommendedLevel = "B2";
+    private string _consultStrengths = "Từ vựng nền tảng ổn định";
+    private string _consultWeaknesses = "Cần tăng cường kỹ năng Nghe/Đọc";
+    private string _consultAdvice = "";
+    private string _consultStudyPlan = "Luyện tập 30 phút mỗi ngày với Flashcard 3D và bài tập Reading/Listening.";
+
+    // Điều hướng Duolingo Shell & Gamification thật
+    private string _currentNavPage = "LearningPath";
+    private readonly Dictionary<string, int> _masteredByTopic = new();
+    private int _totalXp;
+    private int _streakDays;
+    private int _dailyMasteredCount;
+    private string _currentCefrDisplay = "B1";
+
     public MainViewModel()
     {
         _apiClient = new ApiClientService();
-        _storageService = new DataStorageService();
 
-        var localCards = _storageService.LoadDefaultCards();
-        FlashcardSession = new Flashcard3DViewModel(localCards);
+        FlashcardSession = new Flashcard3DViewModel(new List<EnglishFlashcard>());
         FlashcardSession.CardMarkedMastered += OnCardMarkedMastered;
         FlashcardSession.ToastTriggered += msg => StatusMessage = msg;
 
@@ -98,7 +119,7 @@ public class MainViewModel : BaseViewModel
         ApiLogs = new ObservableCollection<ApiLogItem>();
         Curriculum = new ObservableCollection<ApiTopic>();
         CefrLevels = new ObservableCollection<string> { "A1", "A2", "B1", "B2", "C1", "C2" };
-        Skills = new ObservableCollection<string> { "writing", "speaking", "listening", "reading" };
+        Skills = new ObservableCollection<string> { "reading", "listening" };
         Roles = new ObservableCollection<string> { "student", "expert" };
         UserStatuses = new ObservableCollection<string> { "active", "suspended" };
 
@@ -106,6 +127,32 @@ public class MainViewModel : BaseViewModel
         StudentTopics = new ObservableCollection<ApiTopic>();
         ExamTakingSections = new ObservableCollection<ExamTakingSectionItem>();
         ExamAnswerGrid = new ObservableCollection<ExamAnswerGridItem>();
+        EditableQuizQuestions = new ObservableCollection<EditableQuizQuestionItem>();
+        StudentQuizQuestions = new ObservableCollection<SkillQuizQuestionItem>();
+        Consultations = new ObservableCollection<ApiConsultation>();
+        StudentProgressList = new ObservableCollection<ApiStudentProgressItem>();
+
+        SendConsultationCommand = new RelayCommand(_ => _ = SendConsultationAsync(), _ => IsRole("expert") && SelectedProgressStudent?.User is not null);
+        OpenConsultationForStudentCommand = new RelayCommand(p =>
+        {
+            if (p is ApiStudentProgressItem item) SelectedProgressStudent = item;
+            CurrentNavPage = "ExpertConsult";
+        }, _ => IsRole("expert"));
+
+        NavigateCommand = new RelayCommand(p =>
+        {
+            if (p is string page && !string.IsNullOrWhiteSpace(page))
+                CurrentNavPage = page;
+        });
+        OpenPathTopicCommand = new RelayCommand(p => _ = OpenPathTopicAsync(p as TopicDeck));
+
+        AddQuizQuestionCommand = new RelayCommand(_ => AddQuizQuestion());
+        RemoveQuizQuestionCommand = new RelayCommand(q => { if (q is EditableQuizQuestionItem item) RemoveQuizQuestion(item); });
+        GenerateSkillAssignmentCommand = new RelayCommand(_ => _ = GenerateSkillAssignmentAsync(), _ => IsRole("expert") && !IsGeneratingSkillAssignment);
+        PlayListeningAudioCommand = new RelayCommand(_ => PlayAudioUrl(SelectedAssignment?.Reference_Media_Url));
+        PlayExpertMediaCommand = new RelayCommand(_ => PlayAudioUrl(AssignmentMediaUrl));
+        StopAudioCommand = new RelayCommand(_ => { _mediaAudioService.StopMedia(); StatusMessage = "Đã dừng phát âm thanh."; });
+        SpeakListeningScriptCommand = new RelayCommand(_ => SpeakListeningScript());
 
         GenerateExamCommand = new RelayCommand(_ => _ = GenerateExamAsync(), _ => IsRole("expert") && SelectedExamStudent is not null && !IsGeneratingExam);
         SaveExamDraftCommand = new RelayCommand(_ => _ = SaveExamAsync("draft"), _ => IsRole("expert") && GeneratedExam is not null);
@@ -129,12 +176,18 @@ public class MainViewModel : BaseViewModel
             CurrentUser = null;
             Email = string.Empty;
             Password = string.Empty;
-            StatusMessage = "Bạn đã đăng xuất.";
+            StatusMessage = string.Empty;
         });
-        ToggleRegisterCommand = new RelayCommand(_ => { IsRegistering = !IsRegistering; StatusMessage = IsRegistering ? "Tạo tài khoản mới (role mặc định: student)." : "Đăng nhập bằng tài khoản của bạn."; });
+        ToggleRegisterCommand = new RelayCommand(_ =>
+        {
+            IsRegistering = !IsRegistering;
+            Password = string.Empty;
+            RegisterName = string.Empty;
+            StatusMessage = string.Empty;
+        });
         LoadTopicsCommand = new RelayCommand(_ => _ = LoadTopicsAsync(), _ => IsStudent && !IsTopicBusy);
         GenerateTopicCommand = new RelayCommand(_ => _ = GenerateTopicAsync(), _ => IsStudent && !IsTopicBusy && !string.IsNullOrWhiteSpace(NewTopicName) && NewTopicName.Trim().Length <= 80);
-        OpenTopicCommand = new RelayCommand(_ => _ = OpenSelectedTopicAsync(), _ => IsStudent && !IsTopicBusy && SelectedTopic is not null);
+        OpenTopicCommand = new RelayCommand(_ => _ = OpenPathTopicAsync(SelectedTopic), _ => IsStudent && !IsTopicBusy && SelectedTopic is not null);
         GenerateBatchCommand = new RelayCommand(_ => _ = GenerateBatchAsync(), _ => IsStudent && !IsTopicBusy && SelectedTopic is not null);
         DeleteTopicCommand = new RelayCommand(_ => _ = DeleteTopicAsync(), _ => IsStudent && !IsTopicBusy && SelectedTopic is not null);
         RefreshF4Command = new RelayCommand(_ => _ = LoadF4Async(), _ => IsLoggedIn);
@@ -170,6 +223,56 @@ public class MainViewModel : BaseViewModel
     public ObservableCollection<ApiTopic> StudentTopics { get; }
     public ObservableCollection<ExamTakingSectionItem> ExamTakingSections { get; }
     public ObservableCollection<ExamAnswerGridItem> ExamAnswerGrid { get; }
+    public ObservableCollection<EditableQuizQuestionItem> EditableQuizQuestions { get; }
+    public ObservableCollection<SkillQuizQuestionItem> StudentQuizQuestions { get; }
+    public ObservableCollection<ApiConsultation> Consultations { get; }
+    public ObservableCollection<ApiStudentProgressItem> StudentProgressList { get; }
+
+    public ApiStudentProgressItem? SelectedProgressStudent
+    {
+        get => _selectedProgressStudent;
+        set
+        {
+            if (SetField(ref _selectedProgressStudent, value))
+            {
+                if (value is not null && !string.IsNullOrWhiteSpace(value.Assessed_Cefr))
+                    ConsultCurrentLevel = value.Assessed_Cefr;
+                RaiseCommandStates();
+            }
+        }
+    }
+    public string ConsultCurrentLevel { get => _consultCurrentLevel; set => SetField(ref _consultCurrentLevel, value); }
+    public string ConsultRecommendedLevel { get => _consultRecommendedLevel; set => SetField(ref _consultRecommendedLevel, value); }
+    public string ConsultStrengths { get => _consultStrengths; set => SetField(ref _consultStrengths, value); }
+    public string ConsultWeaknesses { get => _consultWeaknesses; set => SetField(ref _consultWeaknesses, value); }
+    public string ConsultAdvice { get => _consultAdvice; set => SetField(ref _consultAdvice, value); }
+    public string ConsultStudyPlan { get => _consultStudyPlan; set => SetField(ref _consultStudyPlan, value); }
+    public ICommand SendConsultationCommand { get; }
+    public ICommand OpenConsultationForStudentCommand { get; }
+
+    public string CurrentNavPage { get => _currentNavPage; set => SetField(ref _currentNavPage, value); }
+    public int TotalXp { get => _totalXp; private set => SetField(ref _totalXp, value); }
+    public int StreakDays { get => _streakDays; private set => SetField(ref _streakDays, value); }
+    public int DailyMasteredCount
+    {
+        get => _dailyMasteredCount;
+        private set
+        {
+            if (SetField(ref _dailyMasteredCount, value))
+            {
+                OnPropertyChanged(nameof(DailyGoalPercentage));
+                OnPropertyChanged(nameof(DailyGoalText));
+            }
+        }
+    }
+    public int DailyGoalTarget => 15;
+    public double DailyGoalPercentage => Math.Min(100.0, DailyMasteredCount * 100.0 / DailyGoalTarget);
+    public string DailyGoalText => $"{DailyMasteredCount} / {DailyGoalTarget} từ";
+    public string CurrentCefrDisplay { get => _currentCefrDisplay; private set => SetField(ref _currentCefrDisplay, value); }
+    public int TotalTopicsCount => Topics.Count;
+    public int TotalCardsCount => Topics.Sum(t => t.CardCount);
+    public ICommand NavigateCommand { get; }
+    public ICommand OpenPathTopicCommand { get; }
 
     public ApiStats AdminStats { get; private set; } = new();
     public ApiAiConfig AiConfig { get => _aiConfig; set => SetField(ref _aiConfig, value); }
@@ -205,6 +308,7 @@ public class MainViewModel : BaseViewModel
                 OnPropertyChanged(nameof(IsListeningSkillSelected));
                 OnPropertyChanged(nameof(IsExamSkillSelected));
                 OnPropertyChanged(nameof(IsNotExamSkillSelected));
+                LoadStudentQuizForAssignment(value);
             }
         }
     }
@@ -237,10 +341,13 @@ public class MainViewModel : BaseViewModel
     public ApiTopic? SelectedCurriculum { get => _selectedCurriculum; set { if (SetField(ref _selectedCurriculum, value) && DeleteCurriculumCommand is RelayCommand cmd) cmd.RaiseCanExecuteChanged(); } }
     public string AdminSummary { get => _adminSummary; set => SetField(ref _adminSummary, value); }
     public string AssignmentTitle { get => _assignmentTitle; set { if (SetField(ref _assignmentTitle, value)) RaiseCommandStates(); } }
+    public string AssignmentTopic { get => _assignmentTopic; set { if (SetField(ref _assignmentTopic, value)) RaiseCommandStates(); } }
+    public bool IsGeneratingSkillAssignment { get => _isGeneratingSkillAssignment; private set { if (SetField(ref _isGeneratingSkillAssignment, value)) RaiseCommandStates(); } }
     public string AssignmentInstructions { get => _assignmentInstructions; set { if (SetField(ref _assignmentInstructions, value)) RaiseCommandStates(); } }
     public string AssignmentContent { get => _assignmentContent; set => SetField(ref _assignmentContent, value); }
     public int AssignmentDuration { get => _assignmentDuration; set => SetField(ref _assignmentDuration, value); }
     public string AssignmentReadingQuiz { get => _assignmentReadingQuiz; set => SetField(ref _assignmentReadingQuiz, value); }
+    public string AssignmentMediaUrl { get => _assignmentMediaUrl; set => SetField(ref _assignmentMediaUrl, value); }
     public bool IsEditingAssignment { get => _isEditingAssignment; set => SetField(ref _isEditingAssignment, value); }
     public string AssignmentSkill { get => _assignmentSkill; set => SetField(ref _assignmentSkill, value); }
     public string AssignmentDueDate { get => _assignmentDueDate; set => SetField(ref _assignmentDueDate, value); }
@@ -288,6 +395,30 @@ public class MainViewModel : BaseViewModel
     {
         get => _statusMessage;
         set => SetField(ref _statusMessage, value);
+    }
+
+    public bool IsBusy
+    {
+        get => _isBusy;
+        private set => SetField(ref _isBusy, value);
+    }
+
+    public string BusyMessage
+    {
+        get => _busyMessage;
+        private set => SetField(ref _busyMessage, value);
+    }
+
+    private async Task RunBusyAsync(string message, Func<Task> action)
+    {
+        BusyMessage = message;
+        IsBusy = true;
+        try { await action(); }
+        finally
+        {
+            IsBusy = false;
+            BusyMessage = string.Empty;
+        }
     }
 
     public bool IsLoggedIn
@@ -350,6 +481,13 @@ public class MainViewModel : BaseViewModel
     public ICommand SaveAiConfigCommand { get; }
     public ICommand AddCurriculumCommand { get; }
     public ICommand DeleteCurriculumCommand { get; }
+    public ICommand AddQuizQuestionCommand { get; }
+    public ICommand RemoveQuizQuestionCommand { get; }
+    public ICommand GenerateSkillAssignmentCommand { get; }
+    public ICommand PlayListeningAudioCommand { get; }
+    public ICommand PlayExpertMediaCommand { get; }
+    public ICommand StopAudioCommand { get; }
+    public ICommand SpeakListeningScriptCommand { get; }
 
     // ==========================================
     // PROPERTIES DÀNH CHO KHẢO THÍ F4
@@ -367,6 +505,7 @@ public class MainViewModel : BaseViewModel
         }
     }
     public ApiTopic? SelectedExamTopic { get => _selectedExamTopic; set => SetField(ref _selectedExamTopic, value); }
+    public string ExamTopicInput { get => _examTopicInput; set => SetField(ref _examTopicInput, value); }
     public string ExamCefrLevel { get => _examCefrLevel; set => SetField(ref _examCefrLevel, value); }
     public bool IncludeSigns { get => _includeSigns; set => SetField(ref _includeSigns, value); }
     public int SignsCount { get => _signsCount; set => SetField(ref _signsCount, value); }
@@ -448,9 +587,13 @@ public class MainViewModel : BaseViewModel
             }
 
             StatusMessage = IsRegistering ? "Đang tạo tài khoản..." : "Đang đăng nhập...";
-            var result = IsRegistering
-                ? await _apiClient.RegisterAsync(RegisterName.Trim(), Email.Trim(), Password)
-                : await _apiClient.LoginAsync(Email.Trim(), Password);
+            LoginResponse? result = null;
+            await RunBusyAsync(IsRegistering ? "Đang tạo tài khoản & đồng bộ..." : "Đang xác thực & tải dữ liệu...", async () =>
+            {
+                result = IsRegistering
+                    ? await _apiClient.RegisterAsync(RegisterName.Trim(), Email.Trim(), Password)
+                    : await _apiClient.LoginAsync(Email.Trim(), Password);
+            });
             if (result?.Success != true || result.User is null)
             {
                 IsLoggedIn = false;
@@ -461,12 +604,17 @@ public class MainViewModel : BaseViewModel
             CurrentUser = result.User;
             IsLoggedIn = true;
             ActiveTabIndex = IsAdmin ? 2 : IsExpert ? 1 : 0;
+            CurrentNavPage = IsAdmin ? "AdminDashboard" : IsExpert ? "ExpertGenerate" : "LearningPath";
             IsRegistering = false;
             RegisterName = string.Empty;
+            Password = string.Empty;
             StatusMessage = $"Xin chào {result.User.Name}";
-            if (IsStudent) await LoadTopicsAsync();
-            if (IsAssessmentUser) await LoadF4Async();
-            if (IsAdmin) await LoadAdminAsync();
+            await RunBusyAsync("Đang tải dữ liệu học tập...", async () =>
+            {
+                if (IsStudent) await LoadTopicsAsync();
+                if (IsAssessmentUser) await LoadF4Async();
+                if (IsAdmin) await LoadAdminAsync();
+            });
         }
         catch
         {
@@ -483,10 +631,18 @@ public class MainViewModel : BaseViewModel
             var selectedId = SelectedTopic?.Id;
             var items = await _apiClient.GetTopicsAsync(CurrentUser.Id);
             Topics.Clear();
-            foreach (var item in items) Topics.Add(item);
+            for (int i = 0; i < items.Count; i++)
+            {
+                items[i].Index = i;
+                Topics.Add(items[i]);
+            }
 
-            SelectedTopic = Topics.FirstOrDefault(topic => topic.Id == selectedId);
-            if (SelectedTopic is null) FlashcardSession.SetCards(new List<EnglishFlashcard>());
+            SelectedTopic = Topics.FirstOrDefault(topic => topic.Id == selectedId) ?? Topics.FirstOrDefault();
+            if (SelectedTopic is null)
+                FlashcardSession.SetCards(new List<EnglishFlashcard>());
+            else
+                await OpenSelectedTopicAsync();
+            RefreshGamificationStats();
             StatusMessage = $"Đã tải {Topics.Count} chủ đề";
         }
         catch (Exception ex)
@@ -506,17 +662,23 @@ public class MainViewModel : BaseViewModel
         try
         {
             StatusMessage = $"Đang tạo bộ từ vựng cho «{NewTopicName.Trim()}»...";
-            var topic = await _apiClient.GenerateTopicAsync(NewTopicName.Trim(), SelectedCefr, CurrentUser.Id);
+            TopicDeck? topic = null;
+            await RunBusyAsync($"Gemini AI đang tạo 15 thẻ từ vựng cho «{NewTopicName.Trim()}»...", async () =>
+            {
+                topic = await _apiClient.GenerateTopicAsync(NewTopicName.Trim(), SelectedCefr, CurrentUser.Id);
+            });
             if (topic is null)
             {
                 throw new InvalidOperationException("API không trả về chủ đề.");
             }
 
             Topics.Insert(0, topic);
+            ReindexTopics();
             SelectedTopic = topic;
             NewTopicName = string.Empty;
             StatusMessage = "Đã tạo bộ từ vựng bằng Gemini.";
             await OpenSelectedTopicAsync();
+            CurrentNavPage = "Flashcards";
         }
         catch (Exception ex)
         {
@@ -535,6 +697,8 @@ public class MainViewModel : BaseViewModel
         {
             var cards = await _apiClient.GetTopicCardsAsync(SelectedTopic.Id, CurrentUser.Id);
             FlashcardSession.SetCards(cards, SelectedTopic.Name, SelectedTopic.Level);
+            _masteredByTopic[SelectedTopic.Id] = FlashcardSession.MasteredCount;
+            RefreshGamificationStats();
             StatusMessage = $"Đã mở chủ đề: {SelectedTopic.Name} ({cards.Count} thẻ)";
         }
         catch (Exception ex)
@@ -552,13 +716,18 @@ public class MainViewModel : BaseViewModel
         try
         {
             StatusMessage = $"Đang sinh thêm từ mới cho «{topic.Name}»...";
-            var result = await _apiClient.GenerateBatchAsync(topic.Id, CurrentUser.Id);
+            GenerateBatchResponse result = null!;
+            await RunBusyAsync($"Gemini AI đang sinh thêm 15 thẻ mới cho «{topic.Name}»...", async () =>
+            {
+                result = await _apiClient.GenerateBatchAsync(topic.Id, CurrentUser.Id);
+            });
             var updatedTopic = new TopicDeck
             {
                 Id = topic.Id,
                 Name = topic.Name,
                 Level = topic.Level,
-                CardCount = result.TotalCards
+                CardCount = result.TotalCards,
+                Index = topic.Index
             };
             var topicIndex = Topics.IndexOf(topic);
             if (topicIndex < 0)
@@ -604,11 +773,14 @@ public class MainViewModel : BaseViewModel
             }
 
             Topics.Remove(topic);
+            _masteredByTopic.Remove(topic.Id);
+            ReindexTopics();
             SelectedTopic = Topics.FirstOrDefault();
             if (SelectedTopic is null)
                 FlashcardSession.SetCards(new List<EnglishFlashcard>());
             else
                 await OpenSelectedTopicAsync();
+            RefreshGamificationStats();
             StatusMessage = $"Đã xóa chủ đề «{topic.Name}» và các thẻ liên quan.";
         }
         catch (Exception ex)
@@ -623,8 +795,59 @@ public class MainViewModel : BaseViewModel
 
     private async void OnCardMarkedMastered(EnglishFlashcard card)
     {
-        if (string.IsNullOrWhiteSpace(card.Id) || !IsLoggedIn) return;
-        await _apiClient.MarkCardLearnedAsync(card.Id, CurrentUser!.Id);
+        if (SelectedTopic is not null)
+            _masteredByTopic[SelectedTopic.Id] = FlashcardSession.MasteredCount;
+        RefreshGamificationStats();
+        if (string.IsNullOrWhiteSpace(card.Id) || !IsLoggedIn || CurrentUser is null) return;
+        await _apiClient.UpdateCardReviewAsync(card, CurrentUser.Id);
+    }
+
+    private async Task OpenPathTopicAsync(TopicDeck? deck)
+    {
+        if (deck is null) return;
+        SelectedTopic = deck;
+        await OpenSelectedTopicAsync();
+        CurrentNavPage = "Flashcards";
+    }
+
+    private void ReindexTopics()
+    {
+        for (int i = 0; i < Topics.Count; i++) Topics[i].Index = i;
+        OnPropertyChanged(nameof(TotalTopicsCount));
+        OnPropertyChanged(nameof(TotalCardsCount));
+    }
+
+    public void RefreshGamificationStats()
+    {
+        if (SelectedTopic is not null)
+            _masteredByTopic[SelectedTopic.Id] = FlashcardSession.MasteredCount;
+
+        int masteredTotal = _masteredByTopic.Values.Sum();
+        int submissionCount = StudentSubmissions.Count;
+        int scoreXp = (int)Math.Round(StudentSubmissions.Sum(s => s.Score ?? s.Reading_Auto_Score ?? 0) * 5);
+        TotalXp = masteredTotal * 10 + submissionCount * 25 + scoreXp;
+
+        var activeDates = new HashSet<DateTime>();
+        foreach (var sub in StudentSubmissions)
+        {
+            if (DateTime.TryParse(sub.Submitted_At, out var dt))
+                activeDates.Add(dt.ToLocalTime().Date);
+        }
+        foreach (var c in FlashcardSession.Cards)
+        {
+            if (c.LastReviewedAt.HasValue)
+                activeDates.Add(c.LastReviewedAt.Value.ToLocalTime().Date);
+        }
+        StreakDays = activeDates.Count > 0 ? activeDates.Count : (masteredTotal > 0 ? 1 : 0);
+
+        DailyMasteredCount = FlashcardSession.MasteredCount;
+        CurrentCefrDisplay = StudentSubmissions
+            .FirstOrDefault(s => !string.IsNullOrWhiteSpace(s.Assessed_Level))?.Assessed_Level
+            ?? SelectedTopic?.Level
+            ?? SelectedCefr;
+
+        OnPropertyChanged(nameof(TotalTopicsCount));
+        OnPropertyChanged(nameof(TotalCardsCount));
     }
 
     private void RaiseCommandStates()
@@ -640,7 +863,8 @@ public class MainViewModel : BaseViewModel
             EditAssignmentCommand, ClearAssignmentFormCommand, SubmitWorkCommand, GradeWorkCommand,
             RefreshAdminCommand, SyncMysqlCommand, SaveUserCommand, SaveAiConfigCommand, AddCurriculumCommand, DeleteCurriculumCommand,
             GenerateExamCommand, SaveExamDraftCommand, PublishExamCommand, PublishSelectedAssignmentCommand,
-            ToggleShowAnswersCommand, StartExamCommand, SubmitExamCommand, CancelExamCommand
+            ToggleShowAnswersCommand, StartExamCommand, SubmitExamCommand, CancelExamCommand,
+            SendConsultationCommand, GenerateSkillAssignmentCommand
         })
         {
             if (command is RelayCommand relay) relay.RaiseCanExecuteChanged();
@@ -656,36 +880,162 @@ public class MainViewModel : BaseViewModel
             Assignments.Clear();
             Submissions.Clear();
             StudentSubmissions.Clear();
+            Consultations.Clear();
+            StudentProgressList.Clear();
 
             if (IsRole("expert"))
             {
-                var assignments = await _apiClient.GetExpertAssignmentsAsync();
-                foreach (var item in assignments) Assignments.Add(item);
+                var assignmentsTask = _apiClient.GetExpertAssignmentsAsync();
+                var submissionsTask = _apiClient.GetExpertSubmissionsAsync();
+                var usersTask = _apiClient.GetUsersAsync();
+                var progressTask = _apiClient.GetStudentsProgressAsync();
+                var consultsTask = _apiClient.GetExpertConsultationsAsync();
+                await Task.WhenAll(assignmentsTask, submissionsTask, usersTask, progressTask, consultsTask);
 
-                var submissions = await _apiClient.GetExpertSubmissionsAsync();
-                foreach (var item in submissions) Submissions.Add(item);
+                foreach (var item in assignmentsTask.Result) Assignments.Add(item);
+                foreach (var item in submissionsTask.Result) Submissions.Add(item);
 
                 StudentsList.Clear();
-                var allUsers = await _apiClient.GetUsersAsync();
-                foreach (var u in allUsers.Where(u => u.Role.Equals("student", StringComparison.OrdinalIgnoreCase)))
+                foreach (var u in usersTask.Result.Where(u => u.Role.Equals("student", StringComparison.OrdinalIgnoreCase)))
                 {
                     StudentsList.Add(u);
                 }
+
+                var previousStudentId = SelectedProgressStudent?.User?.Id;
+                foreach (var p in progressTask.Result) StudentProgressList.Add(p);
+                SelectedProgressStudent = StudentProgressList.FirstOrDefault(p => p.User?.Id == previousStudentId)
+                    ?? StudentProgressList.FirstOrDefault();
+
+                foreach (var c in consultsTask.Result) Consultations.Add(c);
+                RaiseCommandStates();
             }
             else if (IsRole("student"))
             {
-                var assignments = await _apiClient.GetStudentAssignmentsAsync();
-                foreach (var item in assignments) Assignments.Add(item);
+                var assignmentsTask = _apiClient.GetStudentAssignmentsAsync();
+                var submissionsTask = _apiClient.GetStudentSubmissionsAsync();
+                var consultsTask = _apiClient.GetStudentConsultationsAsync(CurrentUser?.Id);
+                await Task.WhenAll(assignmentsTask, submissionsTask, consultsTask);
 
-                var submissions = await _apiClient.GetStudentSubmissionsAsync();
-                foreach (var item in submissions)
+                foreach (var item in assignmentsTask.Result) Assignments.Add(item);
+                foreach (var item in submissionsTask.Result)
                 {
                     Submissions.Add(item);
                     StudentSubmissions.Add(item);
                 }
+                foreach (var c in consultsTask.Result) Consultations.Add(c);
+                RefreshGamificationStats();
             }
         }
         catch { StatusMessage = "Không tải được dữ liệu khảo thí."; }
+    }
+
+    private string? BuildReadingQuizJson()
+    {
+        var validQuestions = EditableQuizQuestions
+            .Where(q => !string.IsNullOrWhiteSpace(q.Question))
+            .Select((q, idx) =>
+            {
+                q.Id = idx + 1;
+                return q.ToDto();
+            })
+            .ToList();
+        if (validQuestions.Count > 0)
+            return System.Text.Json.JsonSerializer.Serialize(validQuestions);
+        return !string.IsNullOrWhiteSpace(AssignmentReadingQuiz) ? AssignmentReadingQuiz.Trim() : null;
+    }
+
+    private void LoadStudentQuizForAssignment(ApiAssignment? assignment)
+    {
+        StudentQuizQuestions.Clear();
+        if (assignment is null || string.IsNullOrWhiteSpace(assignment.Reading_Quiz)) return;
+        try
+        {
+            var opts = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var items = System.Text.Json.JsonSerializer.Deserialize<List<ApiReadingQuizQuestion>>(assignment.Reading_Quiz, opts);
+            if (items is null) return;
+            foreach (var q in items) StudentQuizQuestions.Add(new SkillQuizQuestionItem(q));
+        }
+        catch { }
+    }
+
+    private void AddQuizQuestion()
+    {
+        EditableQuizQuestions.Add(new EditableQuizQuestionItem
+        {
+            Id = EditableQuizQuestions.Count + 1,
+            Question = $"Câu hỏi {EditableQuizQuestions.Count + 1}?",
+            OptionA = "Phương án A",
+            OptionB = "Phương án B",
+            OptionC = "Phương án C",
+            OptionD = "Phương án D",
+            CorrectAnswer = "A"
+        });
+    }
+
+    private void RemoveQuizQuestion(EditableQuizQuestionItem item)
+    {
+        EditableQuizQuestions.Remove(item);
+        for (int i = 0; i < EditableQuizQuestions.Count; i++) EditableQuizQuestions[i].Id = i + 1;
+    }
+
+    private void PlayAudioUrl(string? url)
+    {
+        if (_mediaAudioService.PlayMedia(url, out var error))
+            StatusMessage = "Đang phát audio bài nghe...";
+        else
+            StatusMessage = string.IsNullOrWhiteSpace(error) ? "Không phát được audio." : $"Không phát được audio: {error}";
+    }
+
+    private void SpeakListeningScript()
+    {
+        var text = SelectedAssignment?.Content;
+        if (string.IsNullOrWhiteSpace(text)) text = SelectedAssignment?.Instructions;
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            StatusMessage = "Bài nghe chưa có nội dung để đọc bằng TTS.";
+            return;
+        }
+        _mediaAudioService.SpeakAsync(text);
+        StatusMessage = "Đang đọc nội dung bài nghe bằng giọng đọc TTS...";
+    }
+
+    private async Task GenerateSkillAssignmentAsync()
+    {
+        if (string.IsNullOrWhiteSpace(AssignmentTopic))
+        {
+            StatusMessage = "Vui lòng nhập đề tài để AI nhận diện và ra đề.";
+            MessageBox.Show("Hãy nhập đề tài (ví dụ: Renewable Energy, AI in Education) trước khi bấm AI Ra đề.", "Thiếu đề tài", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        IsGeneratingSkillAssignment = true;
+        StatusMessage = $"AI đang nhận diện đề tài «{AssignmentTopic.Trim()}» và tạo đề {AssignmentSkill} ({SelectedCefr})...";
+        try
+        {
+            var draft = await _apiClient.GenerateSkillAssignmentAsync(AssignmentTopic.Trim(), AssignmentSkill, SelectedCefr, 4);
+            if (draft is null)
+            {
+                StatusMessage = "AI không tạo được đề cho đề tài này.";
+                return;
+            }
+
+            AssignmentTitle = draft.Title;
+            AssignmentInstructions = draft.Instructions;
+            AssignmentContent = draft.Content;
+            EditableQuizQuestions.Clear();
+            foreach (var q in draft.Questions)
+                EditableQuizQuestions.Add(EditableQuizQuestionItem.FromDto(q));
+
+            StatusMessage = $"AI đã tạo đề {draft.Skill} theo đề tài «{draft.Topic}» ({EditableQuizQuestions.Count} câu trắc nghiệm). Kiểm tra rồi bấm Tạo bài mới.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Lỗi khi gọi AI ra đề: {ex.Message}";
+        }
+        finally
+        {
+            IsGeneratingSkillAssignment = false;
+        }
     }
 
     private async Task CreateAssignmentAsync()
@@ -699,6 +1049,9 @@ public class MainViewModel : BaseViewModel
         }
         try
         {
+            var topicNames = string.IsNullOrWhiteSpace(AssignmentTopic)
+                ? new List<string>()
+                : new List<string> { AssignmentTopic.Trim() };
             var ok = await _apiClient.CreateAssignmentAsync(
                 AssignmentTitle.Trim(),
                 AssignmentSkill,
@@ -708,7 +1061,9 @@ public class MainViewModel : BaseViewModel
                 AssignmentInstructions.Trim(),
                 AssignmentDueDate,
                 10.0,
-                !string.IsNullOrWhiteSpace(AssignmentReadingQuiz) ? AssignmentReadingQuiz.Trim() : null);
+                BuildReadingQuizJson(),
+                !string.IsNullOrWhiteSpace(AssignmentMediaUrl) ? AssignmentMediaUrl.Trim() : null,
+                topicNames);
 
             if (!ok) { StatusMessage = "Tạo bài tập thất bại."; return; }
             ClearAssignmentForm();
@@ -729,6 +1084,9 @@ public class MainViewModel : BaseViewModel
         }
         try
         {
+            var topicNames = string.IsNullOrWhiteSpace(AssignmentTopic)
+                ? new List<string>()
+                : new List<string> { AssignmentTopic.Trim() };
             var ok = await _apiClient.UpdateAssignmentAsync(
                 SelectedAssignment.Id,
                 AssignmentTitle.Trim(),
@@ -739,7 +1097,9 @@ public class MainViewModel : BaseViewModel
                 AssignmentInstructions.Trim(),
                 AssignmentDueDate,
                 10.0,
-                !string.IsNullOrWhiteSpace(AssignmentReadingQuiz) ? AssignmentReadingQuiz.Trim() : null);
+                BuildReadingQuizJson(),
+                !string.IsNullOrWhiteSpace(AssignmentMediaUrl) ? AssignmentMediaUrl.Trim() : null,
+                topicNames);
 
             if (!ok) { StatusMessage = "Cập nhật bài tập thất bại."; return; }
             ClearAssignmentForm();
@@ -753,13 +1113,29 @@ public class MainViewModel : BaseViewModel
     {
         if (SelectedAssignment is null) return;
         AssignmentTitle = SelectedAssignment.Title;
-        AssignmentSkill = SelectedAssignment.Skill;
+        AssignmentTopic = SelectedAssignment.Topic_Names.FirstOrDefault() ?? "";
+        AssignmentSkill = Skills.FirstOrDefault(s => s.Equals(SelectedAssignment.Skill, StringComparison.OrdinalIgnoreCase)) ?? "reading";
         SelectedCefr = SelectedAssignment.Target_Level;
         AssignmentDuration = SelectedAssignment.Duration_Minutes > 0 ? SelectedAssignment.Duration_Minutes : 45;
         AssignmentDueDate = SelectedAssignment.Due_Date ?? DateTime.Today.AddDays(7).ToString("yyyy-MM-dd");
         AssignmentContent = SelectedAssignment.Content;
         AssignmentInstructions = SelectedAssignment.Instructions;
+        AssignmentMediaUrl = SelectedAssignment.Reference_Media_Url ?? "";
         AssignmentReadingQuiz = SelectedAssignment.Reading_Quiz ?? "";
+        EditableQuizQuestions.Clear();
+        if (!string.IsNullOrWhiteSpace(SelectedAssignment.Reading_Quiz))
+        {
+            try
+            {
+                var opts = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var parsed = System.Text.Json.JsonSerializer.Deserialize<List<ApiReadingQuizQuestion>>(SelectedAssignment.Reading_Quiz, opts);
+                if (parsed is not null)
+                {
+                    foreach (var q in parsed) EditableQuizQuestions.Add(EditableQuizQuestionItem.FromDto(q));
+                }
+            }
+            catch { }
+        }
         IsEditingAssignment = true;
         StatusMessage = $"Đang chỉnh sửa bài tập: {SelectedAssignment.Title}";
     }
@@ -767,9 +1143,13 @@ public class MainViewModel : BaseViewModel
     private void ClearAssignmentForm()
     {
         AssignmentTitle = "";
+        AssignmentTopic = "";
+        AssignmentSkill = "reading";
         AssignmentContent = "";
         AssignmentInstructions = "";
+        AssignmentMediaUrl = "";
         AssignmentReadingQuiz = "";
+        EditableQuizQuestions.Clear();
         AssignmentDuration = 45;
         AssignmentDueDate = DateTime.Today.AddDays(7).ToString("yyyy-MM-dd");
         IsEditingAssignment = false;
@@ -814,16 +1194,22 @@ public class MainViewModel : BaseViewModel
                     finalContent = $"[Ghi chú vấn đáp 1-1]: {StudentSpeakingNotes.Trim()}\n{finalContent}";
                 }
             }
-            else if (SelectedAssignment.Skill.Equals("reading", StringComparison.OrdinalIgnoreCase))
+            else if (SelectedAssignment.Skill.Equals("reading", StringComparison.OrdinalIgnoreCase)
+                     || SelectedAssignment.Skill.Equals("listening", StringComparison.OrdinalIgnoreCase))
             {
-                var answersDict = new Dictionary<string, string>
+                if (StudentQuizQuestions.Count > 0)
                 {
-                    ["1"] = StudentReadingAns1,
-                    ["2"] = StudentReadingAns2,
-                    ["3"] = StudentReadingAns3
-                };
-                readingAnswers = System.Text.Json.JsonSerializer.Serialize(answersDict);
+                    var answersDict = StudentQuizQuestions
+                        .Where(q => !string.IsNullOrWhiteSpace(q.SelectedAnswer))
+                        .ToDictionary(q => q.Id.ToString(), q => q.SelectedAnswer);
+                    if (answersDict.Count > 0)
+                        readingAnswers = System.Text.Json.JsonSerializer.Serialize(answersDict);
+                }
                 topicSentence = !string.IsNullOrWhiteSpace(StudentTopicSentence) ? StudentTopicSentence.Trim() : null;
+                if (string.IsNullOrWhiteSpace(finalContent) && (!string.IsNullOrWhiteSpace(readingAnswers) || !string.IsNullOrWhiteSpace(topicSentence)))
+                {
+                    finalContent = $"Đã hoàn thành bài {SelectedAssignment.Skill} ({StudentQuizQuestions.Count(q => !string.IsNullOrWhiteSpace(q.SelectedAnswer))}/{StudentQuizQuestions.Count} câu trắc nghiệm).";
+                }
             }
 
             var ok = await _apiClient.SubmitAssignmentAsync(
@@ -881,16 +1267,77 @@ public class MainViewModel : BaseViewModel
         catch { StatusMessage = "Không kết nối được API để chấm bài."; }
     }
 
+    private async Task SendConsultationAsync()
+    {
+        if (SelectedProgressStudent?.User is null)
+        {
+            StatusMessage = "Vui lòng chọn sinh viên cần tư vấn.";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(ConsultAdvice))
+        {
+            StatusMessage = "Vui lòng nhập nhận xét / lời khuyên học tập.";
+            MessageBox.Show("Hãy nhập nội dung nhận xét & lời khuyên trước khi gửi tư vấn.", "Thiếu nội dung tư vấn", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        var targetStudent = SelectedProgressStudent.User;
+        var strengths = SplitTags(ConsultStrengths, "Nền tảng tốt");
+        var weaknesses = SplitTags(ConsultWeaknesses, "Cần luyện thêm");
+        try
+        {
+            bool ok = false;
+            await RunBusyAsync($"Đang gửi tư vấn cho {targetStudent.Name}...", async () =>
+            {
+                ok = await _apiClient.CreateConsultationAsync(
+                    targetStudent.Id,
+                    targetStudent.Name,
+                    ConsultCurrentLevel,
+                    ConsultRecommendedLevel,
+                    ConsultAdvice.Trim(),
+                    ConsultStudyPlan.Trim(),
+                    strengths,
+                    weaknesses);
+            });
+            if (ok)
+            {
+                ConsultAdvice = "";
+                await LoadF4Async();
+                StatusMessage = $"Đã gửi tư vấn lộ trình học cho sinh viên {targetStudent.Name}.";
+            }
+            else
+            {
+                StatusMessage = "Gửi tư vấn thất bại.";
+            }
+        }
+        catch { StatusMessage = "Không kết nối được API để gửi tư vấn."; }
+    }
+
+    private static List<string> SplitTags(string raw, string fallback)
+    {
+        var items = (raw ?? string.Empty)
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .ToList();
+        return items.Count > 0 ? items : new List<string> { fallback };
+    }
+
     private async Task LoadAdminAsync()
     {
         try
         {
-            AdminStats = await _apiClient.GetAdminStatsAsync(); OnPropertyChanged(nameof(AdminStats));
+            var statsTask = _apiClient.GetAdminStatsAsync();
+            var usersTask = _apiClient.GetUsersAsync();
+            var logsTask = _apiClient.GetApiLogsAsync();
+            var curriculumTask = _apiClient.GetCurriculumAsync();
+            var aiTask = _apiClient.GetAiConfigAsync();
+            await Task.WhenAll(statsTask, usersTask, logsTask, curriculumTask, aiTask);
+
+            AdminStats = statsTask.Result; OnPropertyChanged(nameof(AdminStats));
             AdminSummary = $"Sinh viên: {AdminStats.Total_Students} | Chuyên gia: {AdminStats.Total_Experts} | Chủ đề: {AdminStats.Total_Topics} | Thẻ: {AdminStats.Total_Cards} | Bài tập: {AdminStats.Total_Assignments} | Bài nộp: {AdminStats.Total_Submissions} | API calls: {AdminStats.Total_Api_Calls}";
-            Users.Clear(); foreach (var u in await _apiClient.GetUsersAsync()) Users.Add(u);
-            ApiLogs.Clear(); foreach (var log in await _apiClient.GetApiLogsAsync()) ApiLogs.Add(log);
-            Curriculum.Clear(); foreach (var topic in await _apiClient.GetCurriculumAsync()) Curriculum.Add(topic);
-            AiConfig = await _apiClient.GetAiConfigAsync();
+            Users.Clear(); foreach (var u in usersTask.Result) Users.Add(u);
+            ApiLogs.Clear(); foreach (var log in logsTask.Result) ApiLogs.Add(log);
+            Curriculum.Clear(); foreach (var topic in curriculumTask.Result) Curriculum.Add(topic);
+            AiConfig = aiTask.Result;
         }
         catch { StatusMessage = "Không tải được dữ liệu quản trị."; }
     }
@@ -910,7 +1357,13 @@ public class MainViewModel : BaseViewModel
 
     private async Task SyncMysqlAsync()
     {
-        try { var (_, message) = await _apiClient.SyncMysqlAsync(); StatusMessage = message; await LoadAdminAsync(); }
+        try
+        {
+            var ok = await _apiClient.SyncMysqlAsync();
+            StatusMessage = ok
+                ? "Đã đồng bộ dữ liệu sang MySQL thành công."
+                : "Không kết nối được MySQL (đang dùng JSON cục bộ). Hãy kiểm tra dịch vụ MySQL và cấu hình .env.";
+        }
         catch { StatusMessage = "Không thể gọi chức năng đồng bộ."; }
     }
 
@@ -958,6 +1411,7 @@ public class MainViewModel : BaseViewModel
             {
                 Student_Id = SelectedExamStudent.Id,
                 Topic_Ids = topicIds,
+                Custom_Topic = string.IsNullOrWhiteSpace(ExamTopicInput) ? null : ExamTopicInput.Trim(),
                 Cefr_Level = ExamCefrLevel,
                 Include_Signs = IncludeSigns,
                 Signs_Count = SignsCount,
@@ -975,7 +1429,10 @@ public class MainViewModel : BaseViewModel
                 Due_Date = ExamDueDate,
                 Show_Answers = ExamShowAnswers
             };
-            GeneratedExam = await _apiClient.GenerateExamAsync(req);
+            await RunBusyAsync("Gemini AI đang phân tích đề tài & sinh đề thi...", async () =>
+            {
+                GeneratedExam = await _apiClient.GenerateExamAsync(req);
+            });
             StatusMessage = GeneratedExam is not null ? "Đã sinh đề thi thành công. Xem trước và lưu hoặc giao ngay." : "Không sinh được đề thi.";
         }
         catch (Exception ex) { StatusMessage = $"Lỗi sinh đề: {ex.Message}"; }
@@ -987,7 +1444,15 @@ public class MainViewModel : BaseViewModel
         if (GeneratedExam is null) return;
         var title = GeneratedExam.Exam_Title;
         var topicIds = SelectedExamTopic is not null ? new List<string> { SelectedExamTopic.Id } : StudentTopics.Select(t => t.Id).ToList();
-        var topicNames = SelectedExamTopic is not null ? new List<string> { SelectedExamTopic.Name } : StudentTopics.Select(t => t.Name).ToList();
+        var topicNames = new List<string>();
+        if (!string.IsNullOrWhiteSpace(ExamTopicInput))
+            topicNames.Add(ExamTopicInput.Trim());
+        var selectedNames = SelectedExamTopic is not null ? new List<string> { SelectedExamTopic.Name } : StudentTopics.Select(t => t.Name).ToList();
+        foreach (var name in selectedNames)
+        {
+            if (!string.IsNullOrWhiteSpace(name) && !topicNames.Contains(name, StringComparer.OrdinalIgnoreCase))
+                topicNames.Add(name);
+        }
         try
         {
             var saved = await _apiClient.SaveExamAssignmentAsync(

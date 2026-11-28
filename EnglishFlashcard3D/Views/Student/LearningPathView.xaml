@@ -1,0 +1,108 @@
+<UserControl x:Class="EnglishFlashcard3D.Views.Student.LearningPathView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,8,0">
+        <StackPanel Margin="4">
+            <!-- BANNER UNIT HIỆN TẠI KIỂU DUOLINGO -->
+            <Border Background="#58CC02" BorderBrush="#58A700" BorderThickness="0,0,0,5" CornerRadius="18" Padding="20,16" Margin="0,0,0,16">
+                <DockPanel>
+                    <Button Content="▶ HỌC NGAY" Command="{Binding OpenTopicCommand}"
+                            DockPanel.Dock="Right" VerticalAlignment="Center"
+                            Background="#FFFFFF" Foreground="#58A700" BorderBrush="#D7F2C2" BorderThickness="2,2,2,4"
+                            Padding="18,10" FontWeight="ExtraBold"/>
+                    <StackPanel>
+                        <TextBlock Text="{Binding SelectedTopic.UnitLabel, FallbackValue='LỘ TRÌNH HỌC TẬP'}" Foreground="#E8FFD6" FontWeight="ExtraBold" FontSize="12"/>
+                        <TextBlock Text="{Binding SelectedTopic.Name, FallbackValue='Chọn hoặc tạo chủ đề từ vựng để bắt đầu'}" Foreground="#FFFFFF" FontWeight="ExtraBold" FontSize="22" TextTrimming="CharacterEllipsis" Margin="0,2,12,0"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                            <Border Background="#46A302" CornerRadius="8" Padding="8,3" Margin="0,0,8,0">
+                                <TextBlock Text="{Binding SelectedTopic.Level, StringFormat='CEFR {0}', FallbackValue='CEFR B1'}" Foreground="#FFFFFF" FontWeight="Bold" FontSize="11"/>
+                            </Border>
+                            <TextBlock Text="{Binding SelectedTopic.CardCountText, FallbackValue='0 thẻ'}" Foreground="#E8FFD6" FontWeight="Bold" FontSize="12" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+
+            <!-- TẠO CHỦ ĐỀ MỚI BẰNG AI GEMINI & QUẢN LÝ BỘ THẺ -->
+            <Border Style="{StaticResource DuoCardBorder}" Margin="0,0,0,18">
+                <StackPanel>
+                    <DockPanel Margin="0,0,0,10">
+                        <TextBlock Text="✨ Tạo chủ đề mới bằng AI Gemini" FontWeight="ExtraBold" FontSize="15" Foreground="#3C3C3C" VerticalAlignment="Center"/>
+                        <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                            <Button Content="➕ Sinh thêm 15 từ" Command="{Binding GenerateBatchCommand}" Style="{StaticResource DuoOutlineButton}" Padding="10,5" Margin="0,0,6,0" FontSize="12"/>
+                            <Button Content="🗑 Xóa chủ đề" Command="{Binding DeleteTopicCommand}" Style="{StaticResource DuoDangerButton}" Padding="10,5" FontSize="12"/>
+                        </StackPanel>
+                    </DockPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="84"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0" Text="{Binding NewTopicName, UpdateSourceTrigger=PropertyChanged}" ToolTip="Nhập tên chủ đề (VD: Architecture, Travel, Tech)"/>
+                        <ComboBox Grid.Column="2" ItemsSource="{Binding CefrLevels}" SelectedItem="{Binding SelectedCefr}" ToolTip="Trình độ CEFR"/>
+                        <Button Grid.Column="4" Content="✨ TẠO 15 TỪ" Command="{Binding GenerateTopicCommand}" Style="{StaticResource DuoBlueButton}" Padding="14,9"/>
+                        <Button Grid.Column="6" Content="↻ Tải lại" Command="{Binding LoadTopicsCommand}" Style="{StaticResource DuoOutlineButton}" Padding="12,9"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- ĐƯỜNG LỘ TRÌNH CHỦ ĐỀ DẠNG NODE TRÒN ZIC-ZAC KIỂU DUOLINGO -->
+            <TextBlock Text="LỘ TRÌNH CHỦ ĐỀ CỦA BẠN" Foreground="#777777" FontWeight="ExtraBold" FontSize="12" HorizontalAlignment="Center" Margin="0,0,0,8"/>
+
+            <ItemsControl ItemsSource="{Binding Topics}" HorizontalAlignment="Center">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Margin="{Binding PathOffsetMargin}" HorizontalAlignment="Center">
+                            <Button Command="{Binding DataContext.OpenPathTopicCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                    CommandParameter="{Binding}"
+                                    Background="{Binding NodeColor}"
+                                    BorderBrush="{Binding NodeShadowColor}"
+                                    BorderThickness="0,0,0,6"
+                                    Width="82" Height="82" Padding="0" Cursor="Hand"
+                                    ToolTip="Nhấp để học bộ thẻ này ngay">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="nodeCircle"
+                                                Width="82" Height="82" CornerRadius="41"
+                                                Background="{TemplateBinding Background}"
+                                                BorderBrush="{TemplateBinding BorderBrush}"
+                                                BorderThickness="{TemplateBinding BorderThickness}">
+                                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                <TextBlock Text="★" FontSize="26" Foreground="#FFFFFF" HorizontalAlignment="Center"/>
+                                                <TextBlock Text="{Binding Level}" FontSize="11" FontWeight="ExtraBold" Foreground="#FFFFFF" HorizontalAlignment="Center" Margin="0,-2,0,0"/>
+                                            </StackPanel>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="nodeCircle" Property="Opacity" Value="0.92"/>
+                                            </Trigger>
+                                            <Trigger Property="IsPressed" Value="True">
+                                                <Setter TargetName="nodeCircle" Property="BorderThickness" Value="0,0,0,2"/>
+                                                <Setter TargetName="nodeCircle" Property="Margin" Value="0,4,0,0"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+
+                            <Border Background="#FFFFFF" BorderBrush="#E5E5E5" BorderThickness="2" CornerRadius="12" Padding="12,5" Margin="0,6,0,0" HorizontalAlignment="Center" MaxWidth="220">
+                                <StackPanel HorizontalAlignment="Center">
+                                    <TextBlock Text="{Binding Name}" FontWeight="ExtraBold" FontSize="13" Foreground="#3C3C3C" TextAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Text="{Binding CardCountText}" FontSize="11" FontWeight="Bold" Foreground="#777777" HorizontalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

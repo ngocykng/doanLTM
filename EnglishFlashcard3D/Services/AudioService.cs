@@ -1,10 +1,12 @@
 using System.Speech.Synthesis;
+using System.Windows.Media;
 
 namespace EnglishFlashcard3D.Services;
 
 public class AudioService : IDisposable
 {
     private readonly SpeechSynthesizer _synthesizer = new();
+    private MediaPlayer? _mediaPlayer;
 
     public AudioService()
     {
@@ -41,8 +43,52 @@ public class AudioService : IDisposable
         }
     }
 
+    public void StopSpeaking()
+    {
+        try { _synthesizer.SpeakAsyncCancelAll(); }
+        catch { }
+    }
+
+    public bool PlayMedia(string? urlOrPath, out string error)
+    {
+        error = string.Empty;
+        if (string.IsNullOrWhiteSpace(urlOrPath))
+        {
+            error = "Chưa có liên kết audio.";
+            return false;
+        }
+        if (!Uri.TryCreate(urlOrPath.Trim(), UriKind.Absolute, out var uri))
+        {
+            error = "Đường dẫn audio không hợp lệ.";
+            return false;
+        }
+        try
+        {
+            _mediaPlayer ??= new MediaPlayer();
+            _mediaPlayer.Stop();
+            _mediaPlayer.Open(uri);
+            _mediaPlayer.Volume = 1.0;
+            _mediaPlayer.Play();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+            return false;
+        }
+    }
+
+    public void StopMedia()
+    {
+        try { _mediaPlayer?.Stop(); }
+        catch { }
+        StopSpeaking();
+    }
+
     public void Dispose()
     {
+        StopMedia();
+        _mediaPlayer?.Close();
         _synthesizer.Dispose();
     }
 }

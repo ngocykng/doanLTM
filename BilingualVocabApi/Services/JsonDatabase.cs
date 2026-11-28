@@ -47,7 +47,7 @@ public class JsonDatabase
             topic.Owner_User_Id = defaultStudent.Id;
             changed = true;
         }
-        if (changed) Save();
+        if (changed) Save("topics");
     }
 
     private void EnsureFixedAdmin()
@@ -56,15 +56,17 @@ public class JsonDatabase
             ?? _data.Users.FirstOrDefault(u => u.Id == "user-admin-root" && u.Role == "admin");
         if (admin is null)
         {
-            _data.Users.Add(new User
+            admin = new User
             {
-                Id = "user-admin-root", Email = "admin@123", Password = "123456",
+                Id = "user-admin-root", Email = "admin@123", Password = PasswordSecurity.HashPassword("123456"),
                 Name = "Quản trị viên", Role = "admin", Department = "DAU", Status = "active"
-            });
+            };
+            _data.Users.Add(admin);
         }
         else
         {
-            admin.Password = "123456";
+            if (!PasswordSecurity.VerifyPassword("123456", admin.Password) || !PasswordSecurity.IsHashed(admin.Password))
+                admin.Password = PasswordSecurity.HashPassword("123456");
             admin.Email = "admin@123";
             admin.Role = "admin";
             admin.Status = "active";
@@ -72,10 +74,34 @@ public class JsonDatabase
         }
         foreach (var user in _data.Users.Where(u => u.Id != admin!.Id && string.IsNullOrWhiteSpace(u.Password)))
         {
-            user.Password = "123456";
+            user.Password = PasswordSecurity.HashPassword("123456");
             _logger.LogWarning("User {Email} had no stored password and was assigned the temporary recovery password.", user.Email);
         }
-        Save();
+        Save("users");
+    }
+
+    public bool TrySyncToMySql(out string message)
+    {
+        lock (_sync)
+        {
+            if (_mysql.TrySync(_data, out message))
+            {
+                StorageMode = "MySQL";
+                return true;
+            }
+            return false;
+        }
+    }
+
+    public void UpgradePasswordHash(string userId, string plainPassword)
+    {
+        lock (_sync)
+        {
+            var u = _data.Users.FirstOrDefault(x => x.Id == userId);
+            if (u is null || PasswordSecurity.IsHashed(u.Password)) return;
+            u.Password = PasswordSecurity.HashPassword(plainPassword);
+            Save("users");
+        }
     }
 
     private DatabaseSchema Load()
@@ -91,51 +117,21 @@ public class JsonDatabase
             catch { }
         }
 
-        return new DatabaseSchema
-        {
-            Topics = new List<Topic>
-            {
-                new() { Id = "topic-my-vocab", Name = "Sổ tay từ vựng của tôi", Level = "ALL", Department = "Cá nhân", Created_At = DateTime.UtcNow.ToString("O") },
-                new() { Id = "topic-dau-arch", Name = "DAU: Kiến trúc Công trình & Vật liệu", Level = "B2", Is_Dau_Curriculum = true, Department = "Khoa Kiến trúc", Created_At = DateTime.UtcNow.ToString("O") }
-            },
-            Users = new List<User>
-            {
-                new() { Id = "user-admin-root", Email = "admin@dau.edu.vn", Password = "1234", Name = "Quản Trị Viên", Role = "admin", Department = "DAU", Status = "active", Created_At = DateTime.UtcNow.ToString("O"), Last_Active = "Vừa mới" },
-                new() { Id = "user-expert-root", Email = "expert@dau.edu.vn", Password = "1234", Name = "Chuyên Gia", Role = "expert", Department = "DAU", Status = "active", Created_At = DateTime.UtcNow.ToString("O"), Last_Active = "Vừa mới" },
-                new() { Id = "user-student-root", Email = "student@dau.edu.vn", Password = "1234", Name = "Sinh Viên", Role = "student", Department = "Khoa Kiến trúc", Status = "active", Target_Cefr = "B2", Created_At = DateTime.UtcNow.ToString("O"), Last_Active = "Vừa mới" }
-            }
-        };
+        return new DatabaseSchema();
     }
 
-    private void Save()
+    private void Save(params string[] changedTables)
     {
         var text = JsonSerializer.Serialize(_data, _jsonOptions);
         File.WriteAllText(_dbPath, text);
-        if (StorageMode == "MySQL") _mysql.Save(_data);
+        if (StorageMode == "MySQL")
+        {
+            if (changedTables.Length == 0) _mysql.Save(_data);
+            else _mysql.SaveTables(_data, changedTables);
+        }
     }
 
     public DatabaseSchema Snapshot() => _data;
-
-    /// <summary>F5.6: đồng bộ dữ liệu hiện tại (JSON/bộ nhớ) sang MySQL.</summary>
-    public bool SyncToMySql(out string message)
-    {
-        lock (_sync)
-        {
-            try
-            {
-                _mysql.Save(_data);
-                StorageMode = "MySQL";
-                message = $"Đã đồng bộ sang MySQL: {_data.Users.Count} người dùng, {_data.Topics.Count} chủ đề, {_data.Vocab_Cards.Count} thẻ, {_data.Assignments.Count} bài tập.";
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "MySQL sync failed.");
-                message = $"Đồng bộ MySQL thất bại: {ex.Message}";
-                return false;
-            }
-        }
-    }
 
     public List<Topic> GetTopics() => _data.Topics.Select(t =>
     {
@@ -161,7 +157,7 @@ public class JsonDatabase
                 if (string.IsNullOrWhiteSpace(topic.Level)) topic.Level = "B1";
                 _data.Topics.Add(topic);
             }
-            Save();
+            Save("topics", "vocab_cards");
             return topics;
         }
     }
@@ -173,8 +169,8 @@ public class JsonDatabase
         var card = _data.Vocab_Cards.FirstOrDefault(c => c.Id == cardId);
         return card is not null && GetTopicForUser(card.Topic_Id, userId) is not null;
     }
-    public void AddTopic(Topic topic) { lock (_sync) { _data.Topics.Insert(0, topic); Save(); } }
-    public void DeleteTopic(string topicId) { lock (_sync) { _data.Topics = _data.Topics.Where(t => t.Id != topicId).ToList(); _data.Vocab_Cards = _data.Vocab_Cards.Where(c => c.Topic_Id != topicId).ToList(); Save(); } }
+    public void AddTopic(Topic topic) { lock (_sync) { _data.Topics.Insert(0, topic); Save("topics"); } }
+    public void DeleteTopic(string topicId) { lock (_sync) { _data.Topics = _data.Topics.Where(t => t.Id != topicId).ToList(); _data.Vocab_Cards = _data.Vocab_Cards.Where(c => c.Topic_Id != topicId).ToList(); Save("topics", "vocab_cards"); } }
     public void UpdateTopicCardCount(string topicId)
     {
         lock (_sync)
@@ -182,14 +178,14 @@ public class JsonDatabase
             var topic = _data.Topics.FirstOrDefault(item => item.Id == topicId);
             if (topic is null) return;
             topic.Card_Count = _data.Vocab_Cards.Count(card => card.Topic_Id == topicId);
-            Save();
+            Save("topics");
         }
     }
 
     public List<VocabCard> GetCardsByTopic(string topicId) => _data.Vocab_Cards.Where(c => c.Topic_Id == topicId).ToList();
     public List<VocabCard> GetAllCards() => _data.Vocab_Cards;
-    public void AddCards(IEnumerable<VocabCard> cards) { lock (_sync) { _data.Vocab_Cards.AddRange(cards); Save(); } }
-    public VocabCard AddCard(VocabCard card) { lock (_sync) { _data.Vocab_Cards.Insert(0, card); Save(); return card; } }
+    public void AddCards(IEnumerable<VocabCard> cards) { lock (_sync) { _data.Vocab_Cards.AddRange(cards); Save("vocab_cards"); } }
+    public VocabCard AddCard(VocabCard card) { lock (_sync) { _data.Vocab_Cards.Insert(0, card); Save("vocab_cards"); return card; } }
     public VocabCard? UpdateCard(string cardId, VocabCard patch)
     {
         lock (_sync)
@@ -208,12 +204,39 @@ public class JsonDatabase
             card.Example_Ja = patch.Example_Ja ?? card.Example_Ja;
             card.Example_Meaning_Vi = patch.Example_Meaning_Vi ?? card.Example_Meaning_Vi;
             card.Difficulty = patch.Difficulty ?? card.Difficulty;
-            Save();
+            if (patch.Note is not null) card.Note = patch.Note;
+            Save("vocab_cards");
             return card;
         }
     }
 
-    public bool DeleteCard(string cardId) { lock (_sync) { var c = _data.Vocab_Cards.RemoveAll(c => c.Id == cardId); Save(); return c > 0; } }
+    public VocabCard? UpdateCardReview(
+        string cardId,
+        bool? learned,
+        string? note,
+        int? reviewCount,
+        string? lastReviewedAt,
+        string? nextReviewAt,
+        int? intervalDays,
+        double? easeFactor)
+    {
+        lock (_sync)
+        {
+            var card = _data.Vocab_Cards.FirstOrDefault(c => c.Id == cardId);
+            if (card is null) return null;
+            if (learned.HasValue) card.Learned = learned.Value;
+            if (note is not null) card.Note = note;
+            if (reviewCount.HasValue) card.Review_Count = reviewCount.Value;
+            if (lastReviewedAt is not null) card.Last_Reviewed_At = lastReviewedAt;
+            if (nextReviewAt is not null) card.Next_Review_At = nextReviewAt;
+            if (intervalDays.HasValue) card.Interval_Days = intervalDays.Value;
+            if (easeFactor.HasValue && easeFactor.Value >= 1.3) card.Ease_Factor = easeFactor.Value;
+            Save("vocab_cards");
+            return card;
+        }
+    }
+
+    public bool DeleteCard(string cardId) { lock (_sync) { var c = _data.Vocab_Cards.RemoveAll(c => c.Id == cardId); Save("vocab_cards"); return c > 0; } }
     public VocabCard? ToggleCardLearned(string cardId)
     {
         lock (_sync)
@@ -221,7 +244,7 @@ public class JsonDatabase
             var card = _data.Vocab_Cards.FirstOrDefault(c => c.Id == cardId);
             if (card is null) return null;
             card.Learned = !card.Learned;
-            Save();
+            Save("vocab_cards");
             return card;
         }
     }
@@ -243,7 +266,7 @@ public class JsonDatabase
 
     public User? GetUser(string id) => GetUsers().FirstOrDefault(x => x.Id == id);
     public User? GetUserByEmail(string email) => _data.Users.FirstOrDefault(u => u.Email.Equals(email, StringComparison.OrdinalIgnoreCase));
-    public User AddUser(User user) { lock (_sync) { _data.Users.RemoveAll(u => u.Email.Equals(user.Email, StringComparison.OrdinalIgnoreCase)); _data.Users.Add(user); Save(); return GetUser(user.Id)!; } }
+    public User AddUser(User user) { lock (_sync) { _data.Users.RemoveAll(u => u.Email.Equals(user.Email, StringComparison.OrdinalIgnoreCase)); _data.Users.Add(user); Save("users"); return GetUser(user.Id)!; } }
     public User? UpdateUser(string id, Dictionary<string, object?> updates)
     {
         lock (_sync)
@@ -255,12 +278,12 @@ public class JsonDatabase
             if (updates.TryGetValue("department", out var dep)) u.Department = dep?.ToString();
             if (updates.TryGetValue("status", out var status) && status is not null) u.Status = status.ToString()!;
             if (updates.TryGetValue("last_active", out var lastActive)) u.Last_Active = lastActive?.ToString();
-            Save();
+            Save("users");
             return GetUser(id);
         }
     }
 
-    public bool DeleteUser(string id) { lock (_sync) { var c = _data.Users.RemoveAll(x => x.Id == id); Save(); return c > 0; } }
+    public bool DeleteUser(string id) { lock (_sync) { var c = _data.Users.RemoveAll(x => x.Id == id); Save("users"); return c > 0; } }
 
     public List<Assignment> GetAssignments(string? expertId = null)
     {
@@ -307,11 +330,25 @@ public class JsonDatabase
                 }
             }
         }
+        if (!string.IsNullOrWhiteSpace(copy.Reading_Quiz))
+        {
+            try
+            {
+                var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true, PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
+                var quiz = JsonSerializer.Deserialize<List<ReadingQuizQuestion>>(copy.Reading_Quiz, opts);
+                if (quiz is not null)
+                {
+                    foreach (var q in quiz) q.Correct_Answer = string.Empty;
+                    copy.Reading_Quiz = JsonSerializer.Serialize(quiz, opts);
+                }
+            }
+            catch { }
+        }
         return copy;
     }
 
     public Assignment? GetAssignment(string id) => _data.Assignments.FirstOrDefault(a => a.Id == id);
-    public Assignment AddAssignment(Assignment assignment) { lock (_sync) { _data.Assignments.Insert(0, assignment); Save(); return assignment; } }
+    public Assignment AddAssignment(Assignment assignment) { lock (_sync) { _data.Assignments.Insert(0, assignment); Save("assignments"); return assignment; } }
     public Assignment? UpdateAssignment(string id, AssignmentUpdateDto updates)
     {
         lock (_sync)
@@ -324,6 +361,8 @@ public class JsonDatabase
             if (updates.Duration_Minutes.HasValue && updates.Duration_Minutes.Value > 0) a.Duration_Minutes = updates.Duration_Minutes.Value;
             if (updates.Content is not null) a.Content = updates.Content.Trim();
             if (updates.Instructions is not null) a.Instructions = updates.Instructions.Trim();
+            if (updates.Reference_Media_Url is not null)
+                a.Reference_Media_Url = string.IsNullOrWhiteSpace(updates.Reference_Media_Url) ? null : updates.Reference_Media_Url.Trim();
             if (updates.Due_Date is not null) a.Due_Date = updates.Due_Date.Trim();
             if (updates.Max_Score.HasValue && updates.Max_Score.Value > 0) a.Max_Score = updates.Max_Score.Value;
             if (updates.Reading_Quiz is not null) a.Reading_Quiz = updates.Reading_Quiz;
@@ -334,7 +373,7 @@ public class JsonDatabase
             if (!string.IsNullOrWhiteSpace(updates.Status)) a.Status = updates.Status;
             if (updates.Show_Answers.HasValue) a.Show_Answers = updates.Show_Answers.Value;
             if (updates.Exam_Structure is not null) a.Exam_Structure = updates.Exam_Structure;
-            Save();
+            Save("assignments");
             return a;
         }
     }
@@ -346,7 +385,7 @@ public class JsonDatabase
             var a = _data.Assignments.FirstOrDefault(x => x.Id == id);
             if (a is null) return null;
             a.Status = "published";
-            Save();
+            Save("assignments");
             return a;
         }
     }
@@ -358,11 +397,11 @@ public class JsonDatabase
             var a = _data.Assignments.FirstOrDefault(x => x.Id == id);
             if (a is null) return null;
             a.Show_Answers = showAnswers;
-            Save();
+            Save("assignments");
             return a;
         }
     }
-    public bool DeleteAssignment(string id) { lock (_sync) { var c = _data.Assignments.RemoveAll(a => a.Id == id); Save(); return c > 0; } }
+    public bool DeleteAssignment(string id) { lock (_sync) { var c = _data.Assignments.RemoveAll(a => a.Id == id); Save("assignments"); return c > 0; } }
 
     public List<Submission> GetSubmissions(string? studentId = null, string? assignmentId = null, string? status = null)
     {
@@ -495,20 +534,23 @@ public class JsonDatabase
                 submission.Status = "submitted";
                 submission.Exam_Review = assign.Exam_Structure;
             }
-            else if (submission.Skill.Equals("reading", StringComparison.OrdinalIgnoreCase))
+            else if (submission.Skill.Equals("reading", StringComparison.OrdinalIgnoreCase)
+                     || submission.Skill.Equals("listening", StringComparison.OrdinalIgnoreCase))
             {
                 if (assign is not null && !string.IsNullOrWhiteSpace(assign.Reading_Quiz) && !string.IsNullOrWhiteSpace(submission.Reading_Answers))
                 {
                     try
                     {
-                        var questions = JsonSerializer.Deserialize<List<ReadingQuizQuestion>>(assign.Reading_Quiz, _jsonOptions);
-                        var answers = JsonSerializer.Deserialize<Dictionary<string, string>>(submission.Reading_Answers, _jsonOptions);
+                        var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true, PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
+                        var questions = JsonSerializer.Deserialize<List<ReadingQuizQuestion>>(assign.Reading_Quiz, opts);
+                        var answers = JsonSerializer.Deserialize<Dictionary<string, string>>(submission.Reading_Answers, opts);
                         if (questions is not null && questions.Count > 0 && answers is not null)
                         {
                             int correct = 0;
                             foreach (var q in questions)
                             {
-                                if (answers.TryGetValue(q.Id.ToString(), out var ans) && ans.Trim().Equals(q.Correct_Answer.Trim(), StringComparison.OrdinalIgnoreCase))
+                                if (answers.TryGetValue(q.Id.ToString(), out var ans)
+                                    && CleanOptionLetter(ans).Equals(CleanOptionLetter(q.Correct_Answer), StringComparison.OrdinalIgnoreCase))
                                 {
                                     correct++;
                                 }
@@ -521,7 +563,7 @@ public class JsonDatabase
             }
 
             _data.Submissions.Insert(0, submission);
-            Save();
+            Save("submissions");
             return submission;
         }
     }
@@ -555,7 +597,7 @@ public class JsonDatabase
             s.Graded_At = DateTime.UtcNow.ToString("O");
             s.Status = "graded";
             s.Assessed_Level = assessedLevel ?? "B2";
-            Save();
+            Save("submissions");
             return s;
         }
     }
@@ -566,15 +608,20 @@ public class JsonDatabase
         return _data.Consultations.Where(c => c.Student_Id == studentId).ToList();
     }
 
-    public Consultation AddConsultation(Consultation consultation) { lock (_sync) { _data.Consultations.Insert(0, consultation); Save(); return consultation; } }
+    public Consultation AddConsultation(Consultation consultation) { lock (_sync) { _data.Consultations.Insert(0, consultation); Save("consultations"); return consultation; } }
 
     public List<object> GetStudentProgress()
     {
         var students = _data.Users.Where(u => u.Role == "student").ToList();
-        var allCards = _data.Vocab_Cards.Count;
-        var learned = _data.Vocab_Cards.Count(c => c.Learned);
         return students.Select(s =>
         {
+            var topicIds = _data.Topics
+                .Where(t => string.Equals(t.Owner_User_Id, s.Id, StringComparison.Ordinal))
+                .Select(t => t.Id)
+                .ToHashSet();
+            var studentCards = _data.Vocab_Cards.Where(c => topicIds.Contains(c.Topic_Id)).ToList();
+            var allCards = studentCards.Count;
+            var learned = studentCards.Count(c => c.Learned);
             var subs = _data.Submissions.Where(x => x.Student_Id == s.Id).ToList();
             var graded = subs.Where(x => x.Score.HasValue).ToList();
             var avg = graded.Count > 0 ? graded.Average(x => x.Score!.Value) : 0;
@@ -585,8 +632,8 @@ public class JsonDatabase
                 learned_cards = learned,
                 retention_rate = allCards == 0 ? 0 : (int)Math.Round((double)learned / allCards * 100),
                 submissions_count = subs.Count,
-                average_score = (int)Math.Round(avg),
-                assessed_cefr = s.Target_Cefr ?? "B2",
+                average_score = Math.Round(avg, 1),
+                assessed_cefr = graded.FirstOrDefault()?.Assessed_Level ?? s.Target_Cefr ?? "B2",
                 recent_activity = s.Last_Active ?? "Gần đây"
             };
         }).Cast<object>().ToList();
@@ -594,15 +641,30 @@ public class JsonDatabase
 
     public AiConfig GetAiConfig()
     {
-        if (string.IsNullOrWhiteSpace(_data.Ai_Config.Model_Name)
-            || _data.Ai_Config.Model_Name.Equals("gemini-2.5-flash", StringComparison.OrdinalIgnoreCase))
-            _data.Ai_Config.Model_Name = "gemini-3.8-flash";
+        if (string.IsNullOrWhiteSpace(_data.Ai_Config.Model_Name))
+            _data.Ai_Config.Model_Name = "gemini-2.5-flash";
         return _data.Ai_Config;
     }
-    public AiConfig UpdateAiConfig(AiConfig cfg) { lock (_sync) { _data.Ai_Config = cfg; Save(); return _data.Ai_Config; } }
+    public AiConfig UpdateAiConfig(AiConfig cfg) { lock (_sync) { _data.Ai_Config = cfg; Save("ai_config"); return _data.Ai_Config; } }
 
     public List<ApiLog> GetApiLogs(int limit = 50) => _data.Api_Logs.Take(limit).ToList();
-    public void AddApiLog(ApiLog log) { lock (_sync) { _data.Api_Logs.Insert(0, log); if (_data.Api_Logs.Count > 500) _data.Api_Logs = _data.Api_Logs.Take(500).ToList(); Save(); } }
+    public void AddApiLog(ApiLog log)
+    {
+        bool trimNeeded;
+        lock (_sync)
+        {
+            _data.Api_Logs.Insert(0, log);
+            trimNeeded = _data.Api_Logs.Count > 500;
+            if (trimNeeded) _data.Api_Logs = _data.Api_Logs.Take(500).ToList();
+            File.WriteAllText(_dbPath, JsonSerializer.Serialize(_data, _jsonOptions));
+        }
+
+        if (StorageMode == "MySQL")
+        {
+            if (trimNeeded) lock (_sync) _mysql.SaveTables(_data, "api_logs");
+            else _mysql.InsertApiLog(log);
+        }
+    }
 
     public object GetAdminStats()
     {
@@ -629,8 +691,8 @@ public class JsonDatabase
 
     public VideoSession? GetVideoSession(string sessionOrVideoId) => _data.Video_Sessions.FirstOrDefault(s => s.Id == sessionOrVideoId || s.Video_Id == sessionOrVideoId);
     public List<VideoWord> GetVideoWords(string sessionId) => _data.Video_Words.Where(w => w.Session_Id == sessionId).OrderBy(w => w.Timestamp_Sec).ToList();
-    public VideoSession AddVideoSession(VideoSession session) { lock (_sync) { _data.Video_Sessions.RemoveAll(x => x.Id == session.Id); _data.Video_Sessions.Insert(0, session); Save(); return session; } }
-    public void AddVideoWords(IEnumerable<VideoWord> words) { lock (_sync) { var ids = words.Select(w => w.Id).ToHashSet(); _data.Video_Words = _data.Video_Words.Where(w => !ids.Contains(w.Id)).ToList(); _data.Video_Words.AddRange(words); Save(); } }
+    public VideoSession AddVideoSession(VideoSession session) { lock (_sync) { _data.Video_Sessions.RemoveAll(x => x.Id == session.Id); _data.Video_Sessions.Insert(0, session); Save("video_sessions"); return session; } }
+    public void AddVideoWords(IEnumerable<VideoWord> words) { lock (_sync) { var ids = words.Select(w => w.Id).ToHashSet(); _data.Video_Words = _data.Video_Words.Where(w => !ids.Contains(w.Id)).ToList(); _data.Video_Words.AddRange(words); Save("video_words"); } }
     public VideoSession? UpdateVideoSubtitles(string sessionId, List<SubtitleItem> subtitles)
     {
         lock (_sync)
@@ -638,7 +700,7 @@ public class JsonDatabase
             var s = GetVideoSession(sessionId);
             if (s is null) return null;
             s.Subtitles = subtitles;
-            Save();
+            Save("video_sessions");
             return s;
         }
     }
