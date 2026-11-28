@@ -189,7 +189,7 @@ public class MainViewModel : BaseViewModel
         GenerateTopicCommand = new RelayCommand(_ => _ = GenerateTopicAsync(), _ => IsStudent && !IsTopicBusy && !string.IsNullOrWhiteSpace(NewTopicName) && NewTopicName.Trim().Length <= 80);
         OpenTopicCommand = new RelayCommand(_ => _ = OpenPathTopicAsync(SelectedTopic), _ => IsStudent && !IsTopicBusy && SelectedTopic is not null);
         GenerateBatchCommand = new RelayCommand(_ => _ = GenerateBatchAsync(), _ => IsStudent && !IsTopicBusy && SelectedTopic is not null);
-        DeleteTopicCommand = new RelayCommand(_ => _ = DeleteTopicAsync(), _ => IsStudent && !IsTopicBusy && SelectedTopic is not null);
+        DeleteTopicCommand = new RelayCommand(p => _ = DeleteTopicAsync(p as TopicDeck), p => IsStudent && !IsTopicBusy && (p as TopicDeck ?? SelectedTopic) is not null);
         RefreshF4Command = new RelayCommand(_ => _ = LoadF4Async(), _ => IsLoggedIn);
         CreateAssignmentCommand = new RelayCommand(_ => _ = CreateAssignmentAsync(), _ => IsRole("expert"));
         UpdateAssignmentCommand = new RelayCommand(_ => _ = UpdateAssignmentAsync(), _ => IsRole("expert") && SelectedAssignment is not null);
@@ -751,10 +751,10 @@ public class MainViewModel : BaseViewModel
         }
     }
 
-    private async Task DeleteTopicAsync()
+    private async Task DeleteTopicAsync(TopicDeck? targetTopic = null)
     {
-        if (!IsStudent || SelectedTopic is null || CurrentUser is null || IsTopicBusy) return;
-        var topic = SelectedTopic;
+        var topic = targetTopic ?? SelectedTopic;
+        if (!IsStudent || topic is null || CurrentUser is null || IsTopicBusy) return;
         var confirm = MessageBox.Show(
             $"Xóa chủ đề «{topic.Name}» và toàn bộ {topic.CardCount} thẻ từ vựng liên quan?",
             "Xác nhận xóa chủ đề",
@@ -772,14 +772,18 @@ public class MainViewModel : BaseViewModel
                 return;
             }
 
+            bool deletedSelected = SelectedTopic?.Id == topic.Id;
             Topics.Remove(topic);
             _masteredByTopic.Remove(topic.Id);
             ReindexTopics();
-            SelectedTopic = Topics.FirstOrDefault();
-            if (SelectedTopic is null)
-                FlashcardSession.SetCards(new List<EnglishFlashcard>());
-            else
-                await OpenSelectedTopicAsync();
+            if (deletedSelected)
+            {
+                SelectedTopic = Topics.FirstOrDefault();
+                if (SelectedTopic is null)
+                    FlashcardSession.SetCards(new List<EnglishFlashcard>());
+                else
+                    await OpenSelectedTopicAsync();
+            }
             RefreshGamificationStats();
             StatusMessage = $"Đã xóa chủ đề «{topic.Name}» và các thẻ liên quan.";
         }

@@ -32,6 +32,8 @@
                     <DockPanel Margin="0,0,0,10">
                         <TextBlock Text="✨ Tạo chủ đề mới bằng AI Gemini" FontWeight="ExtraBold" FontSize="15" Foreground="#3C3C3C" VerticalAlignment="Center"/>
                         <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                            <ComboBox ItemsSource="{Binding Topics}" SelectedItem="{Binding SelectedTopic}" DisplayMemberPath="Name"
+                                      MinWidth="135" MaxWidth="190" Margin="0,0,6,0" ToolTip="Chọn nhanh chủ đề để sinh thêm từ hoặc xóa"/>
                             <Button Content="➕ Sinh thêm 15 từ" Command="{Binding GenerateBatchCommand}" Style="{StaticResource DuoOutlineButton}" Padding="10,5" Margin="0,0,6,0" FontSize="12"/>
                             <Button Content="🗑 Xóa chủ đề" Command="{Binding DeleteTopicCommand}" Style="{StaticResource DuoDangerButton}" Padding="10,5" FontSize="12"/>
                         </StackPanel>
@@ -93,11 +95,20 @@
                                 </Button.Template>
                             </Button>
 
-                            <Border Background="#FFFFFF" BorderBrush="#E5E5E5" BorderThickness="2" CornerRadius="12" Padding="12,5" Margin="0,6,0,0" HorizontalAlignment="Center" MaxWidth="220">
-                                <StackPanel HorizontalAlignment="Center">
-                                    <TextBlock Text="{Binding Name}" FontWeight="ExtraBold" FontSize="13" Foreground="#3C3C3C" TextAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                                    <TextBlock Text="{Binding CardCountText}" FontSize="11" FontWeight="Bold" Foreground="#777777" HorizontalAlignment="Center"/>
-                                </StackPanel>
+                            <Border Background="#FFFFFF" BorderBrush="#E5E5E5" BorderThickness="2" CornerRadius="12" Padding="10,6" Margin="0,6,0,0" HorizontalAlignment="Center" MinWidth="150" MaxWidth="240">
+                                <DockPanel>
+                                    <Button Content="🗑"
+                                            Command="{Binding DataContext.DeleteTopicCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                            CommandParameter="{Binding}"
+                                            Style="{StaticResource DuoDangerButton}"
+                                            DockPanel.Dock="Right" Padding="7,4" FontSize="12" Margin="10,0,0,0"
+                                            VerticalAlignment="Center"
+                                            ToolTip="Xóa nhanh chủ đề này"/>
+                                    <StackPanel HorizontalAlignment="Left" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Name}" FontWeight="ExtraBold" FontSize="13" Foreground="#3C3C3C" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Text="{Binding CardCountText}" FontSize="11" FontWeight="Bold" Foreground="#777777"/>
+                                    </StackPanel>
+                                </DockPanel>
                             </Border>
                         </StackPanel>
                     </DataTemplate>
